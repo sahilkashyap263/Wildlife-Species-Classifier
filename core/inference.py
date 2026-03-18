@@ -82,19 +82,18 @@ def _run_audio(audio_path: str) -> dict:
 
 
 def _run_image(image_path: str) -> dict:
-    """Image-only pipeline."""
+    """Image-only pipeline — returns visual metadata instead of distance."""
     image_result = image_engine.run(image_path)
-    image_features = image_result.get("features", {})
-
-    dist_result = distance_engine.estimate(image_features=image_features)
 
     return {
-        "species": image_result["species"],
-        "type": image_result["type"],
-        "confidence": image_result["confidence"],
-        "distance": dist_result["distance"],
-        "distance_confidence": dist_result["confidence"],
-        "distance_method": dist_result["method"]
+        "species":        image_result["species"],
+        "type":           image_result["type"],
+        "confidence":     image_result["confidence"],
+        "habitat_zone":   image_result.get("habitat_zone", "—"),
+        "activity_level": image_result.get("activity_level", "—"),
+        "size_class":     image_result.get("size_class", "—"),
+        "body_coverage":  image_result.get("body_coverage", 0),
+        "time_of_day":    image_result.get("time_of_day", "—"),
     }
 
 

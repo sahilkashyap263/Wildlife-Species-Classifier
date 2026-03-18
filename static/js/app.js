@@ -193,6 +193,10 @@ const ModeManager = {
             dom.imageSection.style.display = 'block';
         }
         Logger.add(`Mode switched to ${appState.mode.toUpperCase()}`);
+        // Reset cards and species info on mode switch
+        ResultsHandler.setImageMode(appState.mode === 'image');
+        document.getElementById('speciesInfoPlaceholder').style.display = 'flex';
+        document.getElementById('speciesInfoContent').style.display = 'none';
     }
 };
 
@@ -424,6 +428,50 @@ const Analyzer = {
     }
 };
 
+
+// ────────────────────────────────────────
+// SPECIES INFO DATABASE
+// ────────────────────────────────────────
+const SPECIES_DB = {
+    "Indian Peacock":           { habitat:"Deciduous & mixed forests, near water", diet:"Omnivore — seeds, insects, small reptiles", activity:"Diurnal", size:"Large (90–130 cm body)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent, Sri Lanka", behaviour:"Polygamous; males display elaborate plumage. Roosts in trees." },
+    "Indian Sparrow":           { habitat:"Urban areas, farmland, grassland", diet:"Granivore — mainly seeds and grains", activity:"Diurnal", size:"Small (14–16 cm)", status:"LC", status_label:"Least Concern", range:"Throughout India", behaviour:"Highly social; nests in cavities and roof eaves." },
+    "Common Myna":              { habitat:"Open woodland, urban, cultivated land", diet:"Omnivore — fruit, insects, scraps", activity:"Diurnal", size:"Small (23–26 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Bold and territorial; known mimic. Often seen in pairs." },
+    "Rose-ringed Parakeet":     { habitat:"Light forest, woodland, urban gardens", diet:"Granivore — seeds, nuts, fruit, flowers", activity:"Diurnal", size:"Medium (38–42 cm incl. tail)", status:"LC", status_label:"Least Concern", range:"Sub-Saharan Africa to South Asia", behaviour:"Flock-roosting; loud contact calls. Cavity nester." },
+    "Asian Koel":               { habitat:"Dense canopy forest, urban trees", diet:"Frugivore — figs and soft fruits", activity:"Diurnal", size:"Small (39–46 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia, China", behaviour:"Brood parasite of crows. Males produce iconic ascending call." },
+    "Black Drongo":             { habitat:"Open farmland, scrub, forest edges", diet:"Insectivore — aerial insects", activity:"Diurnal", size:"Small (28 cm)", status:"LC", status_label:"Least Concern", range:"South to Southeast Asia", behaviour:"Aggressive mobber; often seen on exposed perches. Bold around livestock." },
+    "Red-vented Bulbul":        { habitat:"Scrubland, gardens, secondary forest", diet:"Omnivore — fruit, nectar, insects", activity:"Diurnal", size:"Small (20–23 cm)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent", behaviour:"Conspicuous and vocal; one of India's most familiar garden birds." },
+    "Oriental Magpie-Robin":    { habitat:"Open woodland, parks, gardens", diet:"Insectivore — ground insects, worms", activity:"Diurnal", size:"Small (19–21 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Gifted singer; males sing prominently at dawn. Territorial." },
+    "Barn Swallow":             { habitat:"Open country, wetlands, near human habitation", diet:"Insectivore — aerial insects", activity:"Diurnal", size:"Small (17–19 cm)", status:"LC", status_label:"Least Concern", range:"Worldwide except polar regions", behaviour:"Long-distance migratory. Builds mud-cup nests on beams." },
+    "White-throated Kingfisher":{ habitat:"Riverine, wetlands, also dry woodland", diet:"Carnivore — fish, frogs, lizards, large insects", activity:"Diurnal", size:"Small (27–28 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Loud laughing call; hunts from prominent perch." },
+    "Jungle Babbler":           { habitat:"Dry deciduous forest, scrub, gardens", diet:"Omnivore — insects, berries, nectar", activity:"Diurnal", size:"Small (23 cm)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent", behaviour:"Gregarious; moves in noisy groups of 6–10. Nicknamed 'Seven Sisters'." },
+    "Common Tailorbird":        { habitat:"Dense shrubs, gardens, secondary growth", diet:"Insectivore — small insects and spiders", activity:"Diurnal", size:"Small (10–14 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Sews leaf edges together with plant fibre to form nest." },
+    "Purple Sunbird":           { habitat:"Open woodland, gardens, orchards", diet:"Nectarivore — nectar, also small insects", activity:"Diurnal", size:"Small (10 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Males iridescent purple; hovers briefly at flowers." },
+    "Indian Robin":             { habitat:"Open rocky scrub, dry grassland", diet:"Insectivore — ground insects, worms", activity:"Diurnal", size:"Small (16–19 cm)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent", behaviour:"Males hold tail cocked upright. Strong territory defender." },
+    "Shikra":                   { habitat:"Light forest, urban trees, gardens", diet:"Carnivore — small birds, lizards, large insects", activity:"Diurnal", size:"Small (26–30 cm)", status:"LC", status_label:"Least Concern", range:"Africa, South & Southeast Asia", behaviour:"Smallest Indian accipiter; fast low hunting flight." },
+    "Indian Roller":            { habitat:"Open woodland, farmland, dry scrub", diet:"Carnivore — large insects, small vertebrates", activity:"Diurnal", size:"Medium (30–34 cm)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent to Southeast Asia", behaviour:"State bird of several Indian states. Spectacular tumbling display flight." },
+    "Pied Kingfisher":          { habitat:"Freshwater rivers, lakes, coastal lagoons", diet:"Piscivore — small fish", activity:"Diurnal", size:"Small (25 cm)", status:"LC", status_label:"Least Concern", range:"Africa, South Asia, Southeast Asia", behaviour:"Only kingfisher to routinely hover over water before diving." },
+    "Greater Coucal":           { habitat:"Dense undergrowth, reed beds, gardens", diet:"Omnivore — large insects, eggs, small vertebrates", activity:"Diurnal", size:"Large (48 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Weak flier; moves through dense vegetation. Deep booming call." },
+    "Spotted Owlet":            { habitat:"Open forest, urban areas, old buildings", diet:"Carnivore — insects, small rodents, lizards", activity:"Crepuscular/Nocturnal", size:"Small (21 cm)", status:"LC", status_label:"Least Concern", range:"South & Southeast Asia", behaviour:"Often active at dusk. Nests in tree hollows and building cavities." },
+    "Common Hoopoe":            { habitat:"Open grassland, farmland, sparse woodland", diet:"Insectivore — probes soil for larvae and beetles", activity:"Diurnal", size:"Small (25–32 cm)", status:"LC", status_label:"Least Concern", range:"Europe, Africa, Asia", behaviour:"Distinctive erectile crest; probes ground with curved bill." },
+    "Indian Fox":               { habitat:"Arid scrubland, semi-desert, open grassland", diet:"Omnivore — small mammals, insects, fruit", activity:"Crepuscular/Nocturnal", size:"Medium (45–60 cm body)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent", behaviour:"Monogamous pairs; digs dens in soft soil. Avoids dense forest." },
+    "Bengal Tiger":             { habitat:"Dense tiger reserves, mangroves, grassland", diet:"Apex carnivore — deer, wild boar, buffalo", activity:"Crepuscular/Nocturnal", size:"Apex (2.5–3.3 m total)", status:"EN", status_label:"Endangered", range:"Indian subcontinent, Bangladesh, Bhutan", behaviour:"Solitary and territorial. Excellent swimmer. Ambush hunter." },
+    "Indian Leopard":           { habitat:"Mixed forest, rocky hills, forest edges", diet:"Carnivore — deer, monkeys, dogs, livestock", activity:"Nocturnal", size:"Large (1–1.9 m body)", status:"VU", status_label:"Vulnerable", range:"Indian subcontinent to SE Asia", behaviour:"Highly adaptable; caches kills in trees. Most secretive large cat." },
+    "Sloth Bear":               { habitat:"Dry deciduous and tropical forest", diet:"Myrmecophage — termites, ants, fruit, honey", activity:"Nocturnal/Crepuscular", size:"Large (140–190 cm)", status:"VU", status_label:"Vulnerable", range:"Indian subcontinent, Sri Lanka", behaviour:"Long claws for digging termite mounds. Loud sucking feeding sounds." },
+    "Golden Jackal":            { habitat:"Open scrubland, forest edges, farmland", diet:"Omnivore — small mammals, carrion, fruit", activity:"Crepuscular/Nocturnal", size:"Medium (60–75 cm body)", status:"LC", status_label:"Least Concern", range:"SE Europe, Middle East, South Asia", behaviour:"Monogamous; hunts alone or in pairs. Communicates with howling." },
+    "Striped Hyena":            { habitat:"Arid zones, dry scrub, semi-desert", diet:"Scavenger/Carnivore — carrion, bones, small prey", activity:"Nocturnal", size:"Medium (85–130 cm body)", status:"NT", status_label:"Near Threatened", range:"North Africa, Middle East, South Asia", behaviour:"Solitary; massive jaw pressure crushes bone. Raises mane when threatened." },
+    "Indian Wild Boar":         { habitat:"Riverine forest, grassland, scrub", diet:"Omnivore — roots, tubers, carrion, small animals", activity:"Crepuscular/Nocturnal", size:"Large (90–200 cm body)", status:"LC", status_label:"Least Concern", range:"Throughout India and South Asia", behaviour:"Highly social; lives in sounders. Males solitary. Aggressive when cornered." },
+    "Chital Deer":              { habitat:"Grassland and forest edges near water", diet:"Herbivore — grass, leaves, fallen fruit", activity:"Diurnal", size:"Large (100–120 cm shoulder)", status:"LC", status_label:"Least Concern", range:"Indian subcontinent, Sri Lanka", behaviour:"Most common Indian deer; spotted coat retained in adults. Mixed herds." },
+    "Sambar Deer":              { habitat:"Dense moist forest, hill slopes", diet:"Herbivore — grass, shrubs, fallen fruit", activity:"Nocturnal/Crepuscular", size:"Large (160–270 cm body)", status:"VU", status_label:"Vulnerable", range:"South & Southeast Asia", behaviour:"Large shaggy deer; alarm call a sharp bark. Primary tiger prey." },
+    "Indian Mongoose":          { habitat:"Scrubland, farmland, forest edges", diet:"Carnivore — snakes, rodents, eggs, insects", activity:"Diurnal", size:"Small (36–45 cm body)", status:"LC", status_label:"Least Concern", range:"South Asia, Middle East", behaviour:"Famous snake fighter; immune to some venom. Solitary and fast-moving." },
+};
+
+function getSpeciesInfo(species) {
+    // Try exact match first, then case-insensitive
+    return SPECIES_DB[species]
+        || SPECIES_DB[Object.keys(SPECIES_DB).find(k => k.toLowerCase() === species.toLowerCase())]
+        || null;
+}
+
 // ────────────────────────────────────────
 // RESULTS HANDLER
 // ────────────────────────────────────────
@@ -437,31 +485,92 @@ const ResultsHandler = {
             audio_confidence,
             image_confidence,
             distance_confidence,
-            agreement
+            agreement,
+            body_coverage,
         } = data;
 
         dom.species.textContent = species.toUpperCase();
         dom.speciesType.textContent = `Class: ${type}`;
         dom.confidence.textContent = `${(confidence * 100).toFixed(1)}%`;
         dom.confFill.style.width = `${confidence * 100}%`;
-        dom.distance.textContent = distance ? `${distance.toFixed(1)} m` : '— m';
         dom.modeDisplay.textContent = appState.mode.toUpperCase();
         dom.threatLevel.textContent = confidence > 0.9 ? 'VERIFIED'
             : confidence > 0.7 ? 'PROBABLE'
-                : 'UNCERTAIN';
+            : 'UNCERTAIN';
+
+        // Toggle distance vs frame coverage card
+        this.setImageMode(appState.mode === 'image');
+
+        if (appState.mode === 'image') {
+            const cov = body_coverage || 0;
+            document.getElementById('bodyCoverage').textContent = `${cov.toFixed(1)}%`;
+            document.getElementById('coverageFill').style.width = `${cov}%`;
+        } else {
+            dom.distance.textContent = distance ? `${distance.toFixed(1)} m` : '— m';
+        }
 
         this.updateModelBars(confidence, audio_confidence, image_confidence, distance_confidence);
 
-        // Fusion agreement indicator
         if (appState.mode === 'fusion' && agreement !== undefined) {
-            const agreeLabel = agreement ? '✔ Modalities Agree' : '⚠ Modality Conflict — confidence penalised';
-            Logger.add(agreeLabel, agreement ? 'success' : 'warn');
+            Logger.add(agreement ? '✔ Modalities Agree' : '⚠ Modality Conflict — confidence penalised', agreement ? 'success' : 'warn');
         }
 
-        Logger.add(`Species: ${species.toUpperCase()} | Confidence: ${(confidence * 100).toFixed(1)}%  | Distance: ${distance ? distance.toFixed(1) + ' m' : 'N/A'}`, 'success');
+        const distStr = appState.mode === 'image'
+            ? `Frame: ${body_coverage ? body_coverage.toFixed(1) + '%' : 'N/A'}`
+            : `Distance: ${distance ? distance.toFixed(1) + ' m' : 'N/A'}`;
+        Logger.add(`Species: ${species.toUpperCase()} | Confidence: ${(confidence * 100).toFixed(1)}% | ${distStr}`, 'success');
+
+        // Populate species info panel
+        this.updateSpeciesInfo(species, data);
 
         dom.jsonOutput.textContent = JSON.stringify(data, null, 2);
         HistoryManager.add(species, confidence);
+    },
+
+    updateSpeciesInfo(species, data) {
+        const placeholder = document.getElementById('speciesInfoPlaceholder');
+        const content     = document.getElementById('speciesInfoContent');
+        const info = getSpeciesInfo(species);
+
+        if (!info) {
+            placeholder.style.display = 'flex';
+            content.style.display     = 'none';
+            return;
+        }
+
+        placeholder.style.display = 'none';
+        content.style.display     = 'flex';
+
+        // For image mode, enrich with visual data from the scan
+        const habitatVal = (appState.mode === 'image' && data.habitat_zone)
+            ? data.habitat_zone
+            : info.habitat;
+        const activityVal = (appState.mode === 'image' && data.activity_level)
+            ? data.activity_level
+            : info.activity;
+        const sizeVal = (appState.mode === 'image' && data.size_class)
+            ? `${data.size_class} — ${info.size}`
+            : info.size;
+
+        document.getElementById('infoHabitatVal').textContent   = habitatVal;
+        document.getElementById('infoDietVal').textContent      = info.diet;
+        document.getElementById('infoActivityVal').textContent  = activityVal;
+        document.getElementById('infoSizeVal').textContent      = sizeVal;
+        document.getElementById('infoRangeVal').textContent     = info.range;
+        document.getElementById('infoBehaviourVal').textContent = info.behaviour;
+
+        // Conservation status with colour coding
+        const statusEl = document.getElementById('infoStatusVal');
+        const statusClasses = { LC:'status-lc', NT:'status-nt', VU:'status-vu', EN:'status-en', CR:'status-cr' };
+        statusEl.className = 'species-info-value ' + (statusClasses[info.status] || '');
+        statusEl.textContent = `${info.status_label} (${info.status})`;
+    },
+
+    setImageMode(isImage) {
+        const distCard  = document.getElementById('distanceCard');
+        const covCard   = document.getElementById('coverageCard');
+        if (distCard) distCard.style.display = isImage ? 'none' : 'block';
+        if (covCard)  covCard.style.display  = isImage ? 'block' : 'none';
     },
 
     updateModelBars(c, ac, ic, dc) {
@@ -479,7 +588,7 @@ const ResultsHandler = {
         } else if (appState.mode === 'image') {
             set('audio', 0);
             set('image', ic || c);
-            set('dist', dc || c * 0.70);
+            set('dist', 0);
             set('fusion', 0);
         } else {
             set('audio', ac || c * 0.87);
