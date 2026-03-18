@@ -1,3 +1,9 @@
 venv/
 
 core/__pycache__/
+
+setup.sh
+
+.vscode
+
+wlds9.db
