@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════
- * WLDS-9 WILDLIFE DETECTION SYSTEM
+ * Multi-Modal species identification system
  * Main Application JavaScript — v2 (Live Backend)
  * ═══════════════════════════════════════
  */

@@ -15,7 +15,7 @@ function applyTheme(theme) {
 }
 
 applyTheme(savedTheme);
-themeToggle.addEventListener('click', () => {
+if (themeToggle) themeToggle.addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
     applyTheme(current === 'dark' ? 'light' : 'dark');
 });
@@ -30,9 +30,11 @@ const histTableBody  = document.getElementById('histTableBody');
 const tableEmpty     = document.getElementById('tableEmpty');
 const filterMode     = document.getElementById('filterMode');
 const filterLimit    = document.getElementById('filterLimit');
+const filterUser     = document.getElementById('filterUser');  // null for non-admins
 const searchSpecies  = document.getElementById('searchSpecies');
 const refreshBtn     = document.getElementById('refreshBtn');
 const clearDbBtn     = document.getElementById('clearDbBtn');
+const IS_ADMIN       = !!filterUser;  // true if admin user-filter exists in DOM
 const topSpeciesGrid = document.getElementById('topSpeciesGrid');
 const modalOverlay   = document.getElementById('modalOverlay');
 const modalClose     = document.getElementById('modalClose');
@@ -121,6 +123,7 @@ async function loadTable() {
     const limit = filterLimit.value;
     let url = `/logs?limit=${limit}`;
     if (mode) url += `&mode=${mode}`;
+    if (IS_ADMIN && filterUser) url += `&filter_user=${filterUser.value}`;
 
     try {
         const res = await fetch(url);
@@ -181,6 +184,12 @@ function renderTable() {
                     ${isErr ? 'Error' : 'OK'}
                 </span>
             </td>
+            ${IS_ADMIN ? `<td class="col-user">
+                <span class="user-tag">
+                    <i class="fa-solid fa-circle-user"></i>
+                    ${r.logged_by || '—'}
+                </span>
+            </td>` : ''}
             <td>
                 <button class="detail-btn" onclick="openModal(${r.id})">
                     <i class="fa-solid fa-magnifying-glass"></i> Detail
@@ -247,24 +256,27 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── Clear DB ──────────────────────────────────────────────────────────────────
 
-clearDbBtn.addEventListener('click', async () => {
-    if (!confirm('Delete ALL detection logs from the database? This cannot be undone.')) return;
-    try {
-        const res  = await fetch('/logs/clear', { method: 'POST' });
-        const data = await res.json();
-        alert(`Cleared ${data.rows_deleted} rows.`);
-        loadStats();
-        loadTable();
-    } catch (e) {
-        alert('Clear failed: ' + e.message);
-    }
-});
+if (clearDbBtn) {
+    clearDbBtn.addEventListener('click', async () => {
+        if (!confirm('Delete ALL detection logs from the database? This cannot be undone.')) return;
+        try {
+            const res  = await fetch('/logs/clear', { method: 'POST' });
+            const data = await res.json();
+            alert(`Cleared ${data.rows_deleted} rows.`);
+            loadStats();
+            loadTable();
+        } catch (e) {
+            alert('Clear failed: ' + e.message);
+        }
+    });
+}
 
 // ── Event Wiring ──────────────────────────────────────────────────────────────
 
 refreshBtn.addEventListener('click', () => { loadStats(); loadTable(); });
 filterMode.addEventListener('change', loadTable);
 filterLimit.addEventListener('change', loadTable);
+if (filterUser) filterUser.addEventListener('change', loadTable);
 searchSpecies.addEventListener('input', renderTable);
 
 // ── Init ──────────────────────────────────────────────────────────────────────

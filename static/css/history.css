@@ -511,3 +511,44 @@ tr.error-row td { color: #ef4444; opacity: 0.8; }
     .filter-input, .filter-select { min-width: unset; width: 100%; }
     .modal-grid { grid-template-columns: 1fr 1fr; }
 }
+/* ── Admin: user filter + logged-by column ── */
+.admin-filter .admin-select {
+    border-color: var(--turquoise, #06b6d4);
+    background: rgba(6, 182, 212, 0.06);
+    color: var(--turquoise-dk, #0891b2);
+    font-weight: 600;
+}
+
+.col-user {
+    white-space: nowrap;
+}
+
+.user-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    border-radius: 20px;
+    color: var(--turquoise-dk, #0891b2);
+}
+.user-tag i { font-size: 0.72rem; }
+
+/* Admin badge in header */
+.admin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 4px rgba(245,158,11,.35);
+}

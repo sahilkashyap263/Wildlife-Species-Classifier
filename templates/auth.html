@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WLDS-9 — Sign In</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦅</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: #dff0f5;
+            background-image:
+                radial-gradient(ellipse 70% 60% at 20% 10%, rgba(6,182,212,.18) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 50% at 80% 90%, rgba(20,184,166,.14) 0%, transparent 50%);
+        }
+
+        /* ── Card ── */
+        .card {
+            width: 100%;
+            max-width: 440px;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.9);
+            border-radius: 22px;
+            box-shadow: 0 12px 40px rgba(6,182,212,.12), 0 2px 8px rgba(0,0,0,.06);
+            overflow: hidden;
+        }
+
+        /* ── Brand header ── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: .9rem;
+            padding: 1.6rem 1.8rem 1.3rem;
+            border-bottom: 1px solid rgba(6,182,212,.12);
+        }
+        .brand-icon {
+            width: 52px; height: 52px;
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+            border: 1.5px solid rgba(6,182,212,.3);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            color: #06b6d4;
+            box-shadow: 0 2px 8px rgba(6,182,212,.2);
+        }
+        .brand-name  { font-size: 1.1rem; font-weight: 700; color: #1f2937; }
+        .brand-sub   { font-size: .75rem; color: #6b7280; margin-top: 1px; }
+
+        /* ── Tab switcher ── */
+        .tabs {
+            display: flex;
+            background: rgba(6,182,212,.05);
+            border-bottom: 1px solid rgba(6,182,212,.12);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: .85rem;
+            background: none;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: .88rem;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            transition: color .2s, background .2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .tab-btn.active {
+            color: #06b6d4;
+            font-weight: 600;
+            border-bottom-color: #06b6d4;
+            background: rgba(255,255,255,.6);
+        }
+        .tab-btn:hover:not(.active) { color: #0891b2; background: rgba(6,182,212,.04); }
+
+        /* ── Panel ── */
+        .panel { display: none; padding: 1.8rem; }
+        .panel.active { display: block; }
+
+        .panel-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: .3rem;
+        }
+        .panel-sub {
+            font-size: .82rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        /* ── Error alert ── */
+        .alert-error {
+            display: flex;
+            align-items: flex-start;
+            gap: .6rem;
+            padding: .75rem 1rem;
+            background: rgba(239,68,68,.08);
+            border: 1px solid rgba(239,68,68,.25);
+            border-left: 3px solid #ef4444;
+            border-radius: 10px;
+            font-size: .83rem;
+            color: #dc2626;
+            margin-bottom: 1.2rem;
+        }
+        .alert-error i { margin-top: 1px; flex-shrink: 0; }
+
+        /* ── Fields ── */
+        .field { margin-bottom: 1.1rem; }
+        .field-label {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .75rem;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: .45rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+        .field-label i { color: #06b6d4; font-size: .8rem; }
+
+        .input-wrap { position: relative; }
+        .input-wrap input {
+            width: 100%;
+            padding: .72rem 2.6rem .72rem 1rem;
+            background: rgba(255,255,255,.85);
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: .9rem;
+            color: #111827;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .input-wrap input:focus {
+            border-color: #06b6d4;
+            box-shadow: 0 0 0 3px rgba(6,182,212,.15);
+            background: #fff;
+        }
+        .input-wrap input::placeholder { color: #9ca3af; }
+
+        .eye-btn {
+            position: absolute;
+            right: .8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: .85rem;
+            padding: .2rem;
+            transition: color .15s;
+        }
+        .eye-btn:hover { color: #06b6d4; }
+
+        /* ── Password strength ── */
+        .strength-bar {
+            height: 3px;
+            border-radius: 99px;
+            background: #e5e7eb;
+            margin-top: .45rem;
+            overflow: hidden;
+        }
+        .strength-fill {
+            height: 100%;
+            border-radius: 99px;
+            width: 0;
+            transition: width .3s, background .3s;
+        }
+
+        /* ── Submit button ── */
+        .btn-submit {
+            width: 100%;
+            padding: .8rem;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: .95rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: .5rem;
+            box-shadow: 0 3px 12px rgba(6,182,212,.35);
+            transition: opacity .2s, transform .15s, box-shadow .2s;
+            letter-spacing: .01em;
+        }
+        .btn-submit:hover  { opacity: .92; box-shadow: 0 5px 18px rgba(6,182,212,.45); transform: translateY(-1px); }
+        .btn-submit:active { transform: scale(.98); }
+
+        /* ── Footer link ── */
+        .panel-footer {
+            text-align: center;
+            font-size: .82rem;
+            color: #6b7280;
+            margin-top: 1.3rem;
+        }
+        .panel-footer a {
+            color: #06b6d4;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .panel-footer a:hover { text-decoration: underline; }
+
+        /* ── Card bottom ── */
+        .card-bottom {
+            padding: .9rem 1.8rem;
+            border-top: 1px solid rgba(6,182,212,.1);
+            background: rgba(6,182,212,.03);
+            font-size: .72rem;
+            color: #9ca3af;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+
+    <!-- Brand -->
+    <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-crow"></i></div>
+        <div>
+            <div class="brand-name">WLDS-9</div>
+            <div class="brand-sub">Multi-Modal Species Identification</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn" id="tabLogin" onclick="switchTab('login')">
+            <i class="fa-solid fa-right-to-bracket"></i>&nbsp; Sign In
+        </button>
+        <button class="tab-btn" id="tabRegister" onclick="switchTab('register')">
+            <i class="fa-solid fa-user-plus"></i>&nbsp; Create Account
+        </button>
+    </div>
+
+    <!-- ── LOGIN panel ── -->
+    <div class="panel" id="panelLogin">
+        <div class="panel-title">Welcome back</div>
+        <div class="panel-sub">Sign in to your account to continue</div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                {% if category == 'danger' %}
+                <div class="alert-error">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                    {{ message }}
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST" action="/login">
+            <div class="field">
+                <div class="field-label"><i class="fa-solid fa-envelope"></i> Email</div>
+                <div class="input-wrap">
+                    <input type="text" name="identifier" placeholder="you@example.com" required autocomplete="username">
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="field-label"><i class="fa-solid fa-lock"></i> Password</div>
+                <div class="input-wrap">
+                    <input type="password" name="password" id="loginPw" placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" class="eye-btn" onclick="togglePw('loginPw',this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fa-solid fa-right-to-bracket"></i>&nbsp; Sign In
+            </button>
+        </form>
+
+        <div class="panel-footer">
+            Don't have an account? <a href="#" onclick="switchTab('register'); return false;">Create one</a>
+        </div>
+    </div>
+
+    <!-- ── REGISTER panel ── -->
+    <div class="panel" id="panelRegister">
+        <div class="panel-title">Create account</div>
+        <div class="panel-sub">Join to start identifying species</div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                {% if category == 'danger' %}
+                <div class="alert-error">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                    {{ message }}
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST" action="/register">
+            <div class="field">
+                <div class="field-label"><i class="fa-solid fa-envelope"></i> Email</div>
+                <div class="input-wrap">
+                    <input type="email" name="email" placeholder="you@example.com" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="field-label"><i class="fa-solid fa-lock"></i> Password</div>
+                <div class="input-wrap">
+                    <input type="password" name="password" id="regPw" placeholder="Min. 6 characters" required
+                           autocomplete="new-password" oninput="checkStrength(this.value)">
+                    <button type="button" class="eye-btn" onclick="togglePw('regPw',this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+                <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            </div>
+
+            <div class="field">
+                <div class="field-label"><i class="fa-solid fa-lock"></i> Confirm Password</div>
+                <div class="input-wrap">
+                    <input type="password" name="confirm_password" id="regPw2" placeholder="Repeat password" required autocomplete="new-password">
+                    <button type="button" class="eye-btn" onclick="togglePw('regPw2',this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fa-solid fa-user-plus"></i>&nbsp; Create Account
+            </button>
+        </form>
+
+        <div class="panel-footer">
+            Already have an account? <a href="#" onclick="switchTab('login'); return false;">Sign in</a>
+        </div>
+    </div>
+
+    <div class="card-bottom">WLDS-9 &nbsp;·&nbsp; Species Identification System</div>
+</div>
+
+<script>
+    // ── Tab switcher ──
+    function switchTab(tab) {
+        document.getElementById('panelLogin').classList.toggle('active', tab === 'login');
+        document.getElementById('panelRegister').classList.toggle('active', tab === 'register');
+        document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+        document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+    }
+
+    // ── Show/hide password ──
+    function togglePw(id, btn) {
+        const input = document.getElementById(id);
+        const icon  = btn.querySelector('i');
+        const show  = input.type === 'password';
+        input.type  = show ? 'text' : 'password';
+        icon.className = show ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    }
+
+    // ── Password strength meter ──
+    function checkStrength(val) {
+        const fill = document.getElementById('strengthFill');
+        let score = 0;
+        if (val.length >= 6)  score++;
+        if (val.length >= 10) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+        fill.style.width      = (score / 5 * 100) + '%';
+        fill.style.background = score <= 1 ? '#ef4444' : score <= 3 ? '#f59e0b' : '#10b981';
+    }
+
+    // ── Initialise correct tab ──
+    const initMode = "{{ mode | default('login') }}";
+    switchTab(initMode);
+</script>
+</body>
+</html>

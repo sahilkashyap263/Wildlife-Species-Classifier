@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detection History — WLDS-9</title>
+    <title>Identification History</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦅</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,26 +32,45 @@
                     <i class="fa-solid fa-clock-rotate-left"></i>
                 </div>
                 <div class="logo-text">
-                    <h1>Detection History</h1>
-                    <p>Wildlife Detection System &middot; WLDS-9</p>
+                    <h1>Identification History
+                        {% if is_admin %}<span class="admin-badge"><i class="fa-solid fa-crown"></i> Admin View</span>{% endif %}
+                    </h1>
+                    <p>Multi-Modal Species Identification System &middot; {% if is_admin %}Viewing all users{% else %}Your detections{% endif %}</p>
                 </div>
             </div>
             <div class="header-stats">
-                <div class="stat-item" id="statTotalScans">
-                    <div class="stat-label">Total Scans</div>
-                    <div class="stat-value">—</div>
+                <!-- Left stats group -->
+                <div class="stats-group">
+                    <div class="stat-item" id="statTotalScans">
+                        <div class="stat-label">Total Scans</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-item" id="statAvgConf">
+                        <div class="stat-label">Avg Confidence</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-item" id="statErrors">
+                        <div class="stat-label">Errors</div>
+                        <div class="stat-value">—</div>
+                    </div>
                 </div>
-                <div class="stat-item" id="statAvgConf">
-                    <div class="stat-label">Avg Confidence</div>
-                    <div class="stat-value">—</div>
+
+                <!-- Right controls group -->
+                <div class="header-controls">
+                    <div class="header-divider"></div>
+                    <div class="user-badge">
+                        <i class="fa-solid fa-circle-user"></i>
+                        <span>{{ username or 'User' }}</span>
+                        {% if is_admin %}<span class="admin-badge"><i class="fa-solid fa-crown"></i> Admin</span>{% endif %}
+                    </div>
+                    <a href="/logout" class="logout-btn" title="Log out">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout</span>
+                    </a>
+                    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+                        <i class="fa-solid fa-moon" id="themeIcon"></i>
+                    </button>
                 </div>
-                <div class="stat-item" id="statErrors">
-                    <div class="stat-label">Errors</div>
-                    <div class="stat-value">—</div>
-                </div>
-                <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-                    <i class="fa-solid fa-moon" id="themeIcon"></i>
-                </button>
             </div>
         </div>
     </header>
@@ -62,7 +81,7 @@
         <!-- ── TOP SPECIES ── -->
         <section class="hist-section">
             <div class="hist-section-title">
-                <i class="fa-solid fa-trophy"></i> Top Detected Species
+                <i class="fa-solid fa-trophy"></i> Top Identified Species
             </div>
             <div class="top-species-grid" id="topSpeciesGrid">
                 <div class="top-species-loading">
@@ -102,12 +121,27 @@
                     </label>
                     <input type="text" id="searchSpecies" class="filter-input" placeholder="Species name…">
                 </div>
+                {% if is_admin %}
+                <div class="filter-group admin-filter">
+                    <label class="filter-label">
+                        <i class="fa-solid fa-users"></i> User
+                    </label>
+                    <select id="filterUser" class="filter-select admin-select">
+                        <option value="all">All Users</option>
+                        {% for u in all_users %}
+                        <option value="{{ u.id }}">{{ u.username }}{% if u.role == 'admin' %} (admin){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <button class="btn-refresh" id="refreshBtn">
                     <i class="fa-solid fa-rotate-right"></i> Refresh
                 </button>
+                {% if is_admin %}
                 <button class="btn-clear-db" id="clearDbBtn">
                     <i class="fa-solid fa-trash-can"></i> Clear All
                 </button>
+                {% endif %}
             </div>
         </section>
 
@@ -129,6 +163,7 @@
                             <th>Distance</th>
                             <th>Agreement</th>
                             <th>Status</th>
+                            {% if is_admin %}<th class="col-user"><i class="fa-solid fa-user"></i> User</th>{% endif %}
                             <th></th>
                         </tr>
                     </thead>
@@ -163,7 +198,10 @@
         </div>
     </div>
 
+    
+
     <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+    
 </body>
 
 </html>

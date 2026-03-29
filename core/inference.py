@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import audio_engine, image_engine, distance_engine, fusion_engine, logger
 
 
-def run_pipeline(mode: str, audio_path: str = None, image_path: str = None) -> dict:
+def run_pipeline(mode: str, audio_path: str = None, image_path: str = None, user_id: int = None, logged_by: str = None) -> dict:
     """
     Main inference entry point.
 
@@ -54,11 +54,11 @@ def run_pipeline(mode: str, audio_path: str = None, image_path: str = None) -> d
         result["mode"] = mode
 
         # Log the run
-        logger.log_run(mode=mode, inputs=inputs_log, result=result)
+        logger.log_run(mode=mode, inputs=inputs_log, result=result, user_id=user_id, logged_by=logged_by)
         return result
 
     except Exception as e:
-        err = logger.log_error(mode=mode, error=str(e))
+        err = logger.log_error(mode=mode, error=str(e), user_id=user_id, logged_by=logged_by)
         return {"error": str(e), "mode": mode}
 
 
