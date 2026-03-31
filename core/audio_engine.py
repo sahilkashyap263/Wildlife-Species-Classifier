@@ -1,79 +1,229 @@
 """
-WLDS-9 Audio Engine
-Processes audio input → extracts features → predicts species.
-
-DUMMY MODE: Returns realistic synthetic predictions.
-Replace predict_species() internals with real model inference in Stage 2.
+audio_engine.py  —  WLDS-9 Real CNN Inference
+----------------------------------------------
+Trained on 35 classes (scientific names).
+Preprocessing mirrors the notebook exactly:
+  librosa.load @ 16kHz → melspectrogram (128 mels) → power_to_db
+  → split into overlapping 128-frame chunks → average predictions
 """
 
 import os
-import random
+import numpy as np
 
-# ── Species pool (India-focused, 20 birds + 10 mammals) ──────────────────────
-BIRD_SPECIES = [
-    "Indian Peacock", "Indian Sparrow", "Common Myna", "Rose-ringed Parakeet",
-    "Asian Koel", "Black Drongo", "Red-vented Bulbul", "Oriental Magpie-Robin",
-    "Barn Swallow", "White-throated Kingfisher", "Jungle Babbler",
-    "Common Tailorbird", "Purple Sunbird", "Indian Robin", "Shikra",
-    "Indian Roller", "Pied Kingfisher", "Greater Coucal", "Spotted Owlet",
-    "Common Hoopoe"
-]
+# ── Lazy-loaded globals (loaded once on first call) ───────────────────────────
+_model       = None
+_label_names = None
 
-MAMMAL_SPECIES = [
-    "Indian Fox", "Bengal Tiger", "Indian Leopard", "Sloth Bear",
-    "Golden Jackal", "Striped Hyena", "Indian Wild Boar",
-    "Chital Deer", "Sambar Deer", "Indian Mongoose"
-]
+# ── Paths ─────────────────────────────────────────────────────────────────────
+_BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_MODEL_PATH  = os.path.join(_BASE_DIR, "models", "AnimalSounds.keras")
+_LABELS_PATH = os.path.join(_BASE_DIR, "models", "labels.json")
 
-# ── Confidence bands per species (realistic variance) ────────────────────────
-CONFIDENCE_RANGE = (0.72, 0.97)
+# ── Mel-spectrogram config (must match training exactly) ──────────────────────
+TARGET_SR = 16000
+N_MELS    = 128
+MAX_LEN   = 128   # frames per chunk (~4 seconds at 16kHz)
 
 
-def preprocess_audio(audio_path: str) -> dict:
+# ─────────────────────────────────────────────────────────────────────────────
+# Scientific name → Common name + Type mapping
+# ─────────────────────────────────────────────────────────────────────────────
+SPECIES_MAP = {
+    "Anthus rubescens":          ("American Pipit",           "Bird"),
+    "Anura":                     ("Frog",                     "Amphibian"),
+    "Bos Taurus":                ("Cow",                      "Mammal"),
+    "Canis Lupus":               ("Wolf / Dog",               "Mammal"),
+    "Cardinalis cardinalis":     ("Northern Cardinal",        "Bird"),
+    "Carduelis carduelis":       ("European Goldfinch",       "Bird"),
+    "Cercopithecidae":           ("Monkey",                   "Mammal"),
+    "Coccyzus erythropthalmus":  ("Black-billed Cuckoo",      "Bird"),
+    "Contopus sordidulus":       ("Pacific-slope Flycatcher", "Bird"),
+    "Corvus ossifragus":         ("Fish Crow",                "Bird"),
+    "Dolichonyx oryzivorus":     ("Bobolink",                 "Bird"),
+    "Dumetella carolinensis":    ("Gray Catbird",             "Bird"),
+    "Elephas Maximus":           ("Asian Elephant",           "Mammal"),
+    "Equus Asinus":              ("Donkey",                   "Mammal"),
+    "Equus Caballus":            ("Horse",                    "Mammal"),
+    "Euphagus carolinus":        ("Rusty Blackbird",          "Bird"),
+    "Euphagus cyanocephalus":    ("Brewer's Blackbird",       "Bird"),
+    "Felis Catus":               ("Cat",                      "Mammal"),
+    "Gallus Gallus Domesticus":  ("Chicken",                  "Bird"),
+    "Haemorhous purpureus":      ("Purple Finch",             "Bird"),
+    "Icteria virens":            ("Yellow-breasted Chat",     "Bird"),
+    "Icterus spurius":           ("Orchard Oriole",           "Bird"),
+    "Larus californicus":        ("California Gull",          "Bird"),
+    "Leucosticte tephrocotis":   ("Gray-crowned Rosy-Finch", "Bird"),
+    "Myiarchus crinitus":        ("Great Crested Flycatcher", "Bird"),
+    "Ovis Aries":                ("Sheep",                    "Mammal"),
+    "Panthera Leo":              ("Lion",                     "Mammal"),
+    "Passer domesticus":         ("House Sparrow",            "Bird"),
+    "Passerina ciris":           ("Painted Bunting",          "Bird"),
+    "Passerina cyanea":          ("Indigo Bunting",           "Bird"),
+    "Pipilo erythrophthalmus":   ("Eastern Towhee",           "Bird"),
+    "Riparia riparia":           ("Bank Swallow",             "Bird"),
+    "Seiurus aurocapilla":       ("Ovenbird",                 "Bird"),
+    "Selasphorus rufus":         ("Rufous Hummingbird",       "Bird"),
+    "Ursidae":                   ("Bear",                     "Mammal"),
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build model architecture (mirrors notebook's build_model exactly)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _build_model(num_classes: int = 35):
+    from tensorflow.keras import layers, models
+    model = models.Sequential([
+        layers.Input(shape=(128, 128, 1)),
+
+        layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Conv2D(256, (3, 3), activation='relu', padding='same'),
+        layers.MaxPooling2D((2, 2)),
+        layers.BatchNormalization(),
+
+        layers.Flatten(),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.4),
+        layers.Dense(num_classes, activation='softmax'),
+    ])
+    return model
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _load_model():
+    """Load model + labels once; cache in module globals."""
+    global _model, _label_names
+
+    if _model is not None:
+        return  # already loaded
+
+    import json as _json
+
+    # ── Load labels ──
+    if not os.path.exists(_LABELS_PATH):
+        raise FileNotFoundError(
+            f"[audio_engine] labels.json not found at {_LABELS_PATH}"
+        )
+    with open(_LABELS_PATH, "r") as f:
+        _label_names = _json.load(f)
+
+    # ── Check model folder exists ──
+    weights_path = os.path.join(_MODEL_PATH, "model.weights.h5")
+    if not os.path.exists(weights_path):
+        raise FileNotFoundError(
+            f"[audio_engine] Weights not found at {weights_path}"
+        )
+
+    # ── Rebuild architecture and load weights ──
+    _model = _build_model(num_classes=len(_label_names))
+    _model.load_weights(weights_path)
+
+    print(f"[audio_engine] Model loaded  →  {len(_label_names)} classes")
+
+
+def _audio_to_chunks(file_path: str) -> list:
     """
-    Load audio and extract features.
-    DUMMY: Returns synthetic feature dict.
-    REAL: Use librosa to compute mel-spectrogram, MFCC, RMS, spectral centroid.
+    Load audio and split into overlapping 128-frame chunks (~4s each).
+    Uses 50% overlap so a 15s recording gives ~14 chunks.
+    Returns list of (128, 128) float32 arrays.
     """
-    features = {
-        "rms": round(random.uniform(0.01, 0.25), 4),
-        "spectral_centroid": round(random.uniform(1200, 8000), 2),
-        "mfcc_mean": [round(random.uniform(-200, 200), 2) for _ in range(13)],
-        "mel_shape": [128, 87],   # placeholder shape
-        "duration_s": round(random.uniform(2.5, 5.0), 2)
-    }
-    return features
+    import librosa
 
+    y, sr   = librosa.load(file_path, sr=TARGET_SR)
+    spec    = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=N_MELS)
+    spec_db = librosa.power_to_db(spec, ref=np.max)
 
-def predict_species(features: dict) -> dict:
-    """
-    Run species classification on extracted features.
-    DUMMY: Weighted random from species pool.
-    REAL: Load audio_model.pt → forward pass → argmax → map to species label.
-    """
-    # Bias 70% toward birds (audio is strongest for birds)
-    if random.random() < 0.70:
-        species = random.choice(BIRD_SPECIES)
-        stype = "BIRD"
+    total_frames = spec_db.shape[1]
+    chunks = []
+    step   = MAX_LEN // 2   # 50% overlap = 64 frames
+
+    if total_frames <= MAX_LEN:
+        # Short audio — pad to MAX_LEN and return single chunk
+        pad_width = MAX_LEN - total_frames
+        chunk = np.pad(spec_db, ((0, 0), (0, pad_width)), mode="constant")
+        chunks.append(chunk.astype(np.float32))
     else:
-        species = random.choice(MAMMAL_SPECIES)
-        stype = "MAMMAL"
+        # Slide window across full spectrogram
+        start = 0
+        while start + MAX_LEN <= total_frames:
+            chunk = spec_db[:, start:start + MAX_LEN]
+            chunks.append(chunk.astype(np.float32))
+            start += step
+        # Include final tail chunk if audio remains
+        if start < total_frames:
+            chunk = spec_db[:, -MAX_LEN:]
+            chunks.append(chunk.astype(np.float32))
 
-    confidence = round(random.uniform(*CONFIDENCE_RANGE), 4)
+    print(f"[audio_engine] Audio split into {len(chunks)} chunks")
+    return chunks
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API  —  run() is called by inference.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run(audio_path: str) -> dict:
+    """
+    Called by inference.py as: audio_engine.run(audio_path)
+
+    Splits audio into overlapping 4s chunks, runs inference on each,
+    then averages the softmax scores for a more accurate prediction.
+    """
+    _load_model()
+
+    if not audio_path or not os.path.exists(audio_path):
+        raise ValueError(f"[audio_engine] Audio file not found: {audio_path}")
+
+    # ── Preprocess — split into overlapping chunks ──
+    chunks  = _audio_to_chunks(audio_path)
+    tensors = np.stack([c[..., np.newaxis] for c in chunks])  # (N, 128, 128, 1)
+
+    # ── Inference — average softmax scores across all chunks ──
+    all_scores = _model.predict(tensors, verbose=0)   # (N, 35)
+    scores     = np.mean(all_scores, axis=0)           # (35,) averaged
+
+    predicted_idx = int(np.argmax(scores))
+    confidence    = float(scores[predicted_idx])
+    scientific    = _label_names[predicted_idx]
+
+    # ── Lookup common name + type ──
+    common_name, animal_type = SPECIES_MAP.get(
+        scientific, (scientific, "Unknown")
+    )
+
+    # ── Features dict — passed to distance_engine and fusion_engine ──
+    features = {
+        "confidence":      round(confidence, 4),
+        "amplitude":       round(confidence, 4),
+        "scientific_name": scientific,
+        "raw_scores":      [round(float(s), 4) for s in scores],
+        "chunks_used":     len(chunks),
+    }
 
     return {
-        "species": species,
-        "type": stype,
-        "confidence": confidence,
-        "features": features
+        "species":          common_name,
+        "scientific_name":  scientific,
+        "type":             animal_type,
+        "confidence":       round(confidence, 4),
+        "audio_confidence": round(confidence, 4),
+        "features":         features,
+        "raw_scores":       [round(float(s), 4) for s in scores],
     }
-
-
-def run(audio_path: str = None) -> dict:
-    """
-    Full audio inference pipeline.
-    audio_path: path to uploaded audio file (None in dummy mode).
-    """
-    features = preprocess_audio(audio_path)
-    result = predict_species(features)
-    return result

@@ -1,13 +1,3 @@
-"""
-Auth module for WLDS-9
-Handles user registration, login, logout, and route protection.
-Uses the same wlds9.db SQLite database as the rest of the project.
-
-Roles:
-  - admin : full access, sees ALL history, can clear logs
-  - user  : restricted, sees only their OWN history
-"""
-
 import sqlite3
 import hashlib
 import os

@@ -1,11 +1,3 @@
-"""
-WLDS-9 Logger — SQLite Backend
-All inference runs and errors are stored in wlds9.db
-
-DB location: project/wlds9.db
-Tables: detection_logs, users
-"""
-
 import json
 import sqlite3
 import os
