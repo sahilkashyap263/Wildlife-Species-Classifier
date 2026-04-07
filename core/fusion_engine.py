@@ -1,108 +1,162 @@
 """
-WLDS-9 Fusion Engine
-Combines audio, image, and distance results into a single high-confidence prediction.
+fusion_engine.py  —  WLDS-9 Multi-Modal Fusion Engine
+------------------------------------------------------
+Combines outputs from audio_engine, image_engine, and distance_engine
+into a single weighted result.
 
-Fusion Strategy:
-  1. Species fusion  → confidence-weighted voting
-  2. Distance fusion → weighted average D = (c1*d1 + c2*d2 + c3*d3) / (c1+c2+c3)
-  3. Type fusion     → majority vote with confidence tiebreak
+Strategy
+--------
+1.  Agreement check  — do both modalities predict the same species?
+2.  Weighted fusion  — image confidence weighted slightly higher than audio
+    (visual features are generally more discriminative for still subjects).
+3.  Confidence penalty  — applied when modalities disagree, rewarding
+    consistent multi-modal predictions.
+4.  Distance passthrough  — distance result from distance_engine is attached
+    directly (audio-derived, optionally blended with image body_coverage).
+
+Called by inference.py as:
+    result = fusion_engine.run(audio_result, image_result, dist_result)
 """
 
+import numpy as np
 
-def fuse_species(audio_result: dict, image_result: dict) -> tuple:
+
+# ── Fusion weights ─────────────────────────────────────────────────────────────
+# Image features tend to be more discriminative for still subjects;
+# audio is better for partially-visible or distant animals.
+_WEIGHT_AUDIO = 0.42
+_WEIGHT_IMAGE = 0.58
+
+# Confidence multiplier applied when the two modalities disagree on species.
+_DISAGREEMENT_PENALTY = 0.72
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _weighted_confidence(audio_conf: float, image_conf: float) -> float:
+    """Return a single fused confidence score (0–1)."""
+    fused = _WEIGHT_AUDIO * audio_conf + _WEIGHT_IMAGE * image_conf
+    return round(float(np.clip(fused, 0.0, 1.0)), 4)
+
+
+def _pick_winner(audio_result: dict, image_result: dict,
+                 fused_conf: float) -> tuple[str, str, bool]:
     """
-    Fuse species prediction from two modalities.
+    Decide which species to report and whether the two modalities agree.
 
-    Returns: (species, type, fused_confidence)
-
-    Rules:
-      - If both agree → boost confidence by 10% (max 0.99)
-      - If they disagree → pick the one with higher confidence, penalty -5%
+    Returns
+    -------
+    (species, animal_type, agreement)
+        agreement = True  → both predicted the same species (case-insensitive)
+        agreement = False → conflict; highest-confidence modality wins,
+                            but fused_conf is penalised downstream.
     """
-    a_species = audio_result.get("species", "UNKNOWN")
-    a_conf = audio_result.get("confidence", 0.0)
-    a_type = audio_result.get("type", "UNKNOWN")
+    audio_species = (audio_result.get("species") or "").strip()
+    image_species = (image_result.get("species") or "").strip()
 
-    i_species = image_result.get("species", "UNKNOWN")
-    i_conf = image_result.get("confidence", 0.0)
-    i_type = image_result.get("type", "UNKNOWN")
+    agree = audio_species.lower() == image_species.lower()
 
-    if a_species == i_species:
-        # Agreement → high confidence
-        fused_conf = min(0.99, (a_conf + i_conf) / 2 * 1.10)
-        fused_species = a_species
-        fused_type = a_type
-        agreement = True
+    if agree:
+        # Both agree — use image result (slightly higher weight)
+        return image_species, image_result.get("type", "Unknown"), True
+
+    # Conflict — pick the modality with higher confidence
+    audio_conf = float(audio_result.get("confidence", 0))
+    image_conf = float(image_result.get("confidence", 0))
+
+    if image_conf >= audio_conf:
+        return image_species, image_result.get("type", "Unknown"), False
     else:
-        # Disagreement → winner takes all with penalty
-        if a_conf >= i_conf:
-            fused_species = a_species
-            fused_type = a_type
-            fused_conf = round(a_conf * 0.95, 4)
-        else:
-            fused_species = i_species
-            fused_type = i_type
-            fused_conf = round(i_conf * 0.95, 4)
-        agreement = False
-
-    return fused_species, fused_type, round(fused_conf, 4), agreement
+        return audio_species, audio_result.get("type", "Unknown"), False
 
 
-def fuse_distance(audio_result: dict, image_result: dict, dist_result: dict) -> float:
-    """
-    Weighted distance fusion:
-      D_final = (c1*d1 + c2*d2 + c3*d3) / (c1 + c2 + c3)
-
-    d1 = audio-derived distance (from distance engine, acoustic_only)
-    d2 = image-derived distance (from distance engine, visual component)
-    d3 = final fused distance from distance engine
-    """
-    d_dist = dist_result.get("distance", 25.0)
-    c_dist = dist_result.get("confidence", 0.70)
-
-    # Audio contributes a distance estimate via its confidence score
-    c_audio = audio_result.get("confidence", 0.0)
-    # Image contributes a distance estimate via its confidence score
-    c_image = image_result.get("confidence", 0.0)
-
-    # For dummy mode: use dist_result as ground truth, audio/image weight the blend
-    d_audio = d_dist * 1.05   # slight variance
-    d_image = d_dist * 0.95
-
-    total_conf = c_audio + c_image + c_dist
-    if total_conf == 0:
-        return d_dist
-
-    fused_d = (c_audio * d_audio + c_image * d_image + c_dist * d_dist) / total_conf
-    return round(fused_d, 1)
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API  —  run() is called by inference.py
+# ─────────────────────────────────────────────────────────────────────────────
 
 def run(audio_result: dict, image_result: dict, dist_result: dict) -> dict:
     """
-    Full fusion pipeline.
+    Fuse audio, image, and distance results into a single prediction.
 
-    Inputs:
-        audio_result  → from audio_engine.run()
-        image_result  → from image_engine.run()
-        dist_result   → from distance_engine.estimate()
+    Parameters
+    ----------
+    audio_result : dict   — output of audio_engine.run()
+    image_result : dict   — output of image_engine.run()
+    dist_result  : dict   — output of distance_engine.estimate()
 
-    Returns:
-        Unified prediction dict
+    Returns
+    -------
+    dict with keys consumed by inference.py / the Flask routes / the UI:
+        species           – winning common name
+        type              – Mammal / Bird / Amphibian / Unknown
+        confidence        – fused confidence (penalised on disagreement)
+        audio_confidence  – raw audio CNN confidence
+        image_confidence  – raw image CNN confidence
+        distance          – range string, e.g. "10–30 meters"
+        distance_label    – "Near" | "Medium" | "Far"
+        distance_method   – "gbr_audio" | "gbr_audio+image"
+        audio_species     – species predicted by audio modality (for UI modal)
+        image_species     – species predicted by image modality (for UI modal)
+        agreement         – True | False
+        habitat_zone      – from image_engine (if available)
+        activity_level    – from image_engine (if available)
+        size_class        – from image_engine (if available)
+        body_coverage     – from image_engine (for UI frame-coverage card)
+        time_of_day       – from image_engine
     """
-    species, stype, confidence, agreement = fuse_species(audio_result, image_result)
-    distance = fuse_distance(audio_result, image_result, dist_result)
+    audio_conf = float(audio_result.get("confidence", 0))
+    image_conf = float(image_result.get("confidence", 0))
 
+    # ── 1. Weighted confidence ─────────────────────────────────────────────
+    fused_conf = _weighted_confidence(audio_conf, image_conf)
+
+    # ── 2. Species selection & agreement check ─────────────────────────────
+    species, animal_type, agreement = _pick_winner(
+        audio_result, image_result, fused_conf
+    )
+
+    # ── 3. Penalty on disagreement ─────────────────────────────────────────
+    if not agreement:
+        fused_conf = round(float(np.clip(fused_conf * _DISAGREEMENT_PENALTY, 0.0, 1.0)), 4)
+        print(
+            f"[fusion_engine] ⚠ Conflict — "
+            f"audio={audio_result.get('species')} ({audio_conf:.3f}) vs "
+            f"image={image_result.get('species')} ({image_conf:.3f}) — "
+            f"winner={species}, penalised conf={fused_conf}"
+        )
+    else:
+        print(
+            f"[fusion_engine] ✔ Agreement — "
+            f"{species} | fused_conf={fused_conf}"
+        )
+
+    # ── 4. Assemble final result ───────────────────────────────────────────
     return {
-        "species": species,
-        "type": stype,
-        "confidence": confidence,
-        "distance": distance,
-        "agreement": agreement,
-        "audio_species": audio_result.get("species"),
-        "image_species": image_result.get("species"),
-        "audio_confidence": audio_result.get("confidence"),
-        "image_confidence": image_result.get("confidence"),
-        "distance_confidence": dist_result.get("confidence"),
-        "distance_method": dist_result.get("method"),
-        "mode": "fusion"
+        # Core identification
+        "species":          species,
+        "type":             animal_type,
+        "confidence":       fused_conf,
+
+        # Per-modality confidences (shown in Model Confidence Breakdown)
+        "audio_confidence": round(audio_conf, 4),
+        "image_confidence": round(image_conf, 4),
+
+        # Distance (passed through from distance_engine)
+        "distance":         dist_result.get("distance",        "—"),
+        "distance_label":   dist_result.get("distance_label",  "—"),
+        "distance_method":  dist_result.get("method",          "gbr_audio"),
+
+        # Modality detail (shown in History modal when mode == fusion)
+        "audio_species":    audio_result.get("species", "—"),
+        "image_species":    image_result.get("species", "—"),
+        "agreement":        agreement,
+
+        # Visual metadata from image_engine (used by ResultsHandler._updateSpeciesInfo)
+        "habitat_zone":     image_result.get("habitat_zone",   "—"),
+        "activity_level":   image_result.get("activity_level", "—"),
+        "size_class":       image_result.get("size_class",     "—"),
+        "body_coverage":    image_result.get("body_coverage",  0),
+        "time_of_day":      image_result.get("time_of_day",    "N/A"),
     }

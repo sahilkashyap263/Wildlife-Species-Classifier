@@ -1,13 +1,13 @@
-venv/
-
-core/__pycache__/
-
-setup.sh
-
-.vscode
+venv
 
 wlds9.db
 
-static/uploads
+uploads/
 
 Testing Sounds Dataset
+
+__pycache__/
+
+core/__pycache__/
+
+readme.MD

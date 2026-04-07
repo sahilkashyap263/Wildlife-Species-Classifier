@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}WLDS-9 — Multi-Modal Species Identification System{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth_modal.css') }}">
+{% endblock %}
+
+{% block body %}
+
+<!-- ── Navbar ── -->
+<nav class="ln-nav" id="lnNav">
+    <div class="ln-nav-inner">
+        <div class="ln-nav-logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="WLDS-9">
+        </div>
+        <div class="ln-nav-actions">
+            <button class="ln-theme-btn" id="themeToggle" aria-label="Toggle theme">
+                <i class="fa-solid fa-moon" id="themeIcon"></i>
+            </button>
+            <button class="ln-btn-ghost" data-modal="login">
+                <i class="fa-solid fa-right-to-bracket"></i> Login
+            </button>
+            <button class="ln-btn-solid" data-modal="register">
+                <i class="fa-solid fa-user-plus"></i> Register
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="ln-hero">
+
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="ln-orbs" aria-hidden="true">
+        <div class="ln-orb ln-orb-1"></div>
+        <div class="ln-orb ln-orb-2"></div>
+        <div class="ln-orb ln-orb-3"></div>
+    </div>
+
+    <div class="ln-scanline" aria-hidden="true"></div>
+
+    <div class="ln-hero-content">
+        <div class="ln-badge" data-reveal="0">
+            <span class="ln-badge-dot"></span>
+            ML-Powered &nbsp;·&nbsp; Real-Time &nbsp;·&nbsp; Multi-Modal
+        </div>
+
+        <h1 class="ln-title" data-reveal="1">
+            <span class="ln-title-line">Identify Wildlife</span>
+            <span class="ln-title-line ln-title-accent">With AI Precision</span>
+        </h1>
+
+        <p class="ln-sub" data-reveal="2">
+            WLDS-9 fuses acoustic analysis, computer vision, and sensor fusion
+            to identify <strong>35 species</strong> across audio, image, and
+            hybrid scan modes — all in real time.
+        </p>
+
+        <div class="ln-cta-row" data-reveal="3">
+            <button class="ln-cta-primary" data-modal="login">
+                <i class="fa-solid fa-satellite-dish"></i>
+                Launch System
+            </button>
+            <button class="ln-cta-outline" data-modal="register">
+                Create Free Account
+                <i class="fa-solid fa-arrow-right ln-arrow"></i>
+            </button>
+        </div>
+
+        <div class="ln-stats-row" data-reveal="4">
+            <div class="ln-stat">
+                <span class="ln-stat-num" data-count="35">0</span>
+                <span class="ln-stat-label">Species</span>
+            </div>
+            <div class="ln-stat-sep"></div>
+            <div class="ln-stat">
+                <span class="ln-stat-num" data-count="3">0</span>
+                <span class="ln-stat-label">Scan Modes</span>
+            </div>
+            <div class="ln-stat-sep"></div>
+            <div class="ln-stat">
+                <span class="ln-stat-num ln-stat-text">CNN</span>
+                <span class="ln-stat-label">Backbone</span>
+            </div>
+            <div class="ln-stat-sep"></div>
+            <div class="ln-stat">
+                <span class="ln-stat-num ln-stat-text">GBR</span>
+                <span class="ln-stat-label">Distance</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ln-float-cards" aria-hidden="true">
+        <div class="ln-float-card fc-audio">
+            <i class="fa-solid fa-headphones"></i>
+            <span>Audio CNN</span>
+            <div class="ln-fc-bar">
+                <div class="ln-fc-fill" style="width:87%"></div>
+            </div>
+        </div>
+        <div class="ln-float-card fc-image">
+            <i class="fa-solid fa-camera"></i>
+            <span>Image Net</span>
+            <div class="ln-fc-bar">
+                <div class="ln-fc-fill" style="width:92%"></div>
+            </div>
+        </div>
+        <div class="ln-float-card fc-fusion">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Fusion</span>
+            <div class="ln-fc-bar">
+                <div class="ln-fc-fill" style="width:95%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ln-scroll-hint" aria-hidden="true">
+        <div class="ln-scroll-wheel"></div>
+    </div>
+</section>
+
+<!-- ── Modes ── -->
+<section class="ln-section ln-modes-section">
+    <div class="ln-wrap">
+        <div class="ln-section-head">
+            <span class="ln-tag">Capabilities</span>
+            <h2 class="ln-section-title">Three Ways to Scan</h2>
+            <p class="ln-section-sub">Choose the modality that fits your field conditions — or combine them all for
+                maximum accuracy.</p>
+        </div>
+
+        <div class="ln-modes-grid">
+            <div class="ln-mode-card" data-aos>
+                <div class="ln-mode-icon mode-audio">
+                    <i class="fa-solid fa-headphones"></i>
+                </div>
+                <h3>Audio Mode</h3>
+                <p>Upload or record a 15-second acoustic sample. Our CNN processes mel-spectrograms across overlapping
+                    chunks to identify species from calls, songs, and ambient sound.</p>
+                <ul class="ln-checklist">
+                    <li>WAV, MP3, M4A &amp; WebM support</li>
+                    <li>Live 15s microphone recording</li>
+                    <li>GBR distance estimation (Near / Medium / Far)</li>
+                </ul>
+                <div class="ln-mode-footer mode-audio-bg">
+                    <i class="fa-solid fa-wave-square"></i> Acoustic Analysis
+                </div>
+            </div>
+
+            <div class="ln-mode-card ln-mode-featured" data-aos>
+                <div class="ln-featured-badge">Most Accurate</div>
+                <div class="ln-mode-icon mode-fusion">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h3>Fusion Mode</h3>
+                <p>Feed both audio and image simultaneously. The fusion engine weighs both predictions, checks
+                    inter-modal agreement, and applies a confidence penalty on conflict.</p>
+                <ul class="ln-checklist">
+                    <li>Weighted multi-modal fusion (58% image / 42% audio)</li>
+                    <li>Agreement detection &amp; conflict penalty</li>
+                    <li>Combined distance + visual metadata</li>
+                </ul>
+                <div class="ln-mode-footer mode-fusion-bg">
+                    <i class="fa-solid fa-bolt"></i> Sensor Fusion
+                </div>
+            </div>
+
+            <div class="ln-mode-card" data-aos>
+                <div class="ln-mode-icon mode-image">
+                    <i class="fa-solid fa-camera"></i>
+                </div>
+                <h3>Visual Mode</h3>
+                <p>Upload a photo or capture from your camera. The image CNN classifies species and extracts frame
+                    coverage, habitat zone, activity level, and size class.</p>
+                <ul class="ln-checklist">
+                    <li>JPG, PNG, WebP support</li>
+                    <li>Live camera with corner-finder overlay</li>
+                    <li>Visual metadata: habitat, activity, size</li>
+                </ul>
+                <div class="ln-mode-footer mode-image-bg">
+                    <i class="fa-solid fa-eye"></i> Computer Vision
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Pipeline steps ── -->
+<section class="ln-section ln-alt">
+    <div class="ln-wrap">
+        <div class="ln-section-head">
+            <span class="ln-tag">Pipeline</span>
+            <h2 class="ln-section-title">How It Works</h2>
+            <p class="ln-section-sub">From raw sensor input to structured species identification in under a second.</p>
+        </div>
+        <div class="ln-steps">
+            <div class="ln-step" data-aos>
+                <div class="ln-step-num">01</div>
+                <h4>Upload Input</h4>
+                <p>Provide an audio file, image, or both. Record live from your microphone or capture from your webcam
+                    directly in the browser.</p>
+            </div>
+            <div class="ln-step-conn" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></div>
+            <div class="ln-step" data-aos>
+                <div class="ln-step-num">02</div>
+                <h4>CNN Inference</h4>
+                <p>Audio is chunked into overlapping 4-second mel-spectrograms. Images are resized to 224×224. Both pass
+                    through trained CNNs.</p>
+            </div>
+            <div class="ln-step-conn" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></div>
+            <div class="ln-step" data-aos>
+                <div class="ln-step-num">03</div>
+                <h4>Fusion &amp; Distance</h4>
+                <p>The GBR distance engine estimates range from acoustic features. In fusion mode, results are weighted
+                    and agreement is checked.</p>
+            </div>
+            <div class="ln-step-conn" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></div>
+            <div class="ln-step" data-aos>
+                <div class="ln-step-num">04</div>
+                <h4>Structured Output</h4>
+                <p>Species, confidence, distance, habitat, diet, conservation status and behaviour — all logged to your
+                    personal history.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Species ── -->
+<section class="ln-section">
+    <div class="ln-wrap">
+        <div class="ln-section-head">
+            <span class="ln-tag">Coverage</span>
+            <h2 class="ln-section-title">35 Identifiable Species</h2>
+            <p class="ln-section-sub">Birds, mammals, and amphibians spanning six continents.</p>
+        </div>
+        <div class="ln-species-cloud">
+            {% set birds = ["American Pipit","Bobolink","Bank Swallow","Black-billed Cuckoo",
+            "Brewer's Blackbird","California Gull","Eastern Towhee","European Goldfinch",
+            "Fish Crow","Gray Catbird","Gray-crowned Rosy-Finch","Great Crested Flycatcher",
+            "House Sparrow","Indigo Bunting","Northern Cardinal","Orchard Oriole",
+            "Ovenbird","Pacific-slope Flycatcher","Painted Bunting","Purple Finch",
+            "Rufous Hummingbird","Rusty Blackbird","Yellow-breasted Chat"] %}
+            {% set mammals = ["Asian Elephant","Bear","Cat","Chicken","Cow","Donkey",
+            "Horse","Lion","Monkey","Sheep","Wolf / Dog"] %}
+            {% for s in birds %}
+            <span class="ln-sp-tag sp-bird" data-aos-tag>
+                <i class="fa-solid fa-dove"></i>{{ s }}
+            </span>
+            {% endfor %}
+            {% for s in mammals %}
+            <span class="ln-sp-tag sp-mammal" data-aos-tag>
+                <i class="fa-solid fa-paw"></i>{{ s }}
+            </span>
+            {% endfor %}
+            <span class="ln-sp-tag sp-amphibian" data-aos-tag>
+                <i class="fa-solid fa-frog"></i>Frog
+            </span>
+        </div>
+    </div>
+</section>
+
+<!-- ── CTA strip ── -->
+<section class="ln-cta-strip">
+    <div class="ln-cta-strip-bg" aria-hidden="true"></div>
+    <div class="ln-wrap ln-cta-inner">
+        <div>
+            <h2>Ready to start scanning?</h2>
+            <p>Create a free account and run your first identification in under a minute.</p>
+        </div>
+        <div class="ln-cta-btns">
+            <button class="ln-cta-primary" data-modal="register">
+                <i class="fa-solid fa-user-plus"></i> Create Account
+            </button>
+            <button class="ln-cta-outline ln-cta-outline-white" data-modal="login">
+                Already have one? Sign in <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- ── Auth Modal ── -->
+<div class="am-overlay" id="amOverlay" aria-hidden="true" role="dialog" aria-modal="true"
+    aria-label="Sign in or create account">
+    <div class="am-card" id="amCard">
+
+        <button class="am-close" id="amClose" aria-label="Close"></button>
+
+        <div class="am-tabs" role="tablist">
+            <button class="am-tab am-tab-active" id="amTabLogin" role="tab" aria-selected="true"
+                aria-controls="amPanelLogin">
+                <i class="fa-solid fa-right-to-bracket"></i> Sign In
+            </button>
+            <button class="am-tab" id="amTabRegister" role="tab" aria-selected="false" aria-controls="amPanelRegister">
+                <i class="fa-solid fa-user-plus"></i> Register
+            </button>
+            <div class="am-tab-ink" id="amTabInk"></div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="am-flash am-flash-{{ category }}">
+            <i class="fa-solid
+                    {% if category == 'danger' %}fa-circle-exclamation
+                    {% elif category == 'success' %}fa-circle-check
+                    {% else %}fa-triangle-exclamation{% endif %}">
+            </i>
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endwith %}
+
+        <!-- Login Panel -->
+        <div class="am-panel" id="amPanelLogin" role="tabpanel" aria-labelledby="amTabLogin">
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <div class="am-field">
+                    <label class="am-label" for="amIdentifier">Username or Email</label>
+                    <div class="am-input-wrap">
+                        <i class="fa-solid fa-user am-icon"></i>
+                        <input class="am-input" type="text" id="amIdentifier" name="identifier"
+                            placeholder="Enter username or email" autocomplete="username" required>
+                    </div>
+                </div>
+                <div class="am-field">
+                    <label class="am-label" for="amPassword">Password</label>
+                    <div class="am-input-wrap">
+                        <i class="fa-solid fa-lock am-icon"></i>
+                        <input class="am-input" type="password" id="amPassword" name="password"
+                            placeholder="Enter password" autocomplete="current-password" required>
+                        <button type="button" class="am-eye" data-target="amPassword" aria-label="Toggle password">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="am-submit">
+                    <i class="fa-solid fa-satellite-dish"></i> Access System
+                </button>
+            </form>
+            <p class="am-switch">
+                Don't have an account?
+                <button type="button" class="am-switch-btn" data-target-tab="register">Create one</button>
+            </p>
+        </div>
+
+        <!-- Register Panel -->
+        <div class="am-panel am-panel-hidden" id="amPanelRegister" role="tabpanel" aria-labelledby="amTabRegister">
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <div class="am-field">
+                    <label class="am-label" for="amEmail">Email Address</label>
+                    <div class="am-input-wrap">
+                        <i class="fa-solid fa-envelope am-icon"></i>
+                        <input class="am-input" type="email" id="amEmail" name="email" placeholder="you@example.com"
+                            autocomplete="email" required>
+                    </div>
+                    <span class="am-hint">Your username will be set from your email prefix.</span>
+                </div>
+                <div class="am-field">
+                    <label class="am-label" for="amRegPassword">Password</label>
+                    <div class="am-input-wrap">
+                        <i class="fa-solid fa-lock am-icon"></i>
+                        <input class="am-input" type="password" id="amRegPassword" name="password"
+                            placeholder="Minimum 6 characters" autocomplete="new-password" minlength="6" required>
+                        <button type="button" class="am-eye" data-target="amRegPassword" aria-label="Toggle password">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="am-field">
+                    <label class="am-label" for="amConfirm">Confirm Password</label>
+                    <div class="am-input-wrap">
+                        <i class="fa-solid fa-lock am-icon"></i>
+                        <input class="am-input" type="password" id="amConfirm" name="confirm_password"
+                            placeholder="Repeat your password" autocomplete="new-password" minlength="6" required>
+                        <button type="button" class="am-eye" data-target="amConfirm" aria-label="Toggle password">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="am-submit">
+                    <i class="fa-solid fa-user-plus"></i> Create Account
+                </button>
+            </form>
+            <p class="am-switch">
+                Already have an account?
+                <button type="button" class="am-switch-btn" data-target-tab="login">Sign in</button>
+            </p>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/landing.js') }}"></script>
+{% endblock %}

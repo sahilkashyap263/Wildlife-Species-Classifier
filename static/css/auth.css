@@ -1,0 +1,165 @@
+/* ─────────────────────────────────────────────
+   auth.css  —  WLDS-9 Login / Register Page
+   ───────────────────────────────────────────── */
+
+body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-main);
+}
+
+/* ── Wrapper ─────────────────────────────────── */
+.auth-wrapper {
+    width: 100%;
+    max-width: 400px;
+    padding: 1.25rem;
+}
+
+/* ── Card ─────────────────────────────────────── */
+.auth-card {
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.auth-card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1.25rem;
+}
+
+/* ── Flash messages ───────────────────────────── */
+.flash-msg {
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.flash-msg.danger  { background: rgba(239, 68, 68, 0.12);  color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25);  }
+.flash-msg.success { background: rgba(34, 197, 94, 0.12);  color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.25);  }
+.flash-msg.warning { background: rgba(234, 179, 8, 0.12);  color: #eab308; border: 1px solid rgba(234, 179, 8, 0.25);  }
+
+/* ── Form elements ────────────────────────────── */
+.form-group { margin-bottom: 1rem; }
+
+.form-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    background: var(--bg-input);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--turquoise);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.form-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.input-icon-wrap { position: relative; }
+
+.input-icon-wrap .input-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+.input-icon-wrap .form-input { padding-left: 2.2rem; }
+
+.form-hint {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    opacity: 0.8;
+}
+
+/* ── Submit button ────────────────────────────── */
+.auth-submit-btn {
+    width: 100%;
+    padding: 0.7rem;
+    background: linear-gradient(135deg, var(--turquoise), #0891b2);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 0.4rem;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+.auth-submit-btn:hover  { opacity: 0.92; }
+.auth-submit-btn:active { transform: scale(0.98); }
+
+/* ── Switch link ──────────────────────────────── */
+.auth-switch {
+    text-align: center;
+    margin-top: 1.1rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.auth-switch a { color: var(--turquoise); text-decoration: none; font-weight: 500; }
+.auth-switch a:hover { text-decoration: underline; }
+
+/* ── Theme toggle (fixed top-right) ──────────── */
+.auth-theme-btn {
+    position: fixed;
+    top: 1.1rem;
+    right: 1.1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    transition: background 0.2s;
+    backdrop-filter: blur(8px);
+}
+
+.auth-theme-btn:hover { background: var(--bg-hover); }

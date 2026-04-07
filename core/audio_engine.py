@@ -5,6 +5,12 @@ Trained on 35 classes (scientific names).
 Preprocessing mirrors the notebook exactly:
   librosa.load @ 16kHz → melspectrogram (128 mels) → power_to_db
   → split into overlapping 128-frame chunks → average predictions
+
+The `features` dict returned by run() now exposes all 10 acoustic
+keys required by distance_engine:
+    mel_mean, mel_std, mfcc_mean, mfcc_std,
+    rms_mean, rms_std, rms_max, rms_min,
+    spectral_centroid, zcr
 """
 
 import os
@@ -176,6 +182,49 @@ def _audio_to_chunks(file_path: str) -> list:
     return chunks
 
 
+def _extract_acoustic_features(file_path: str) -> dict:
+    """
+    Extract the 10 acoustic features used by the real GBR distance model.
+
+    Returns a dict with:
+        mel_mean, mel_std, mfcc_mean, mfcc_std,
+        rms_mean, rms_std, rms_max, rms_min,
+        spectral_centroid, zcr
+    """
+    import librosa
+
+    y, sr = librosa.load(file_path, sr=TARGET_SR)
+
+    # Mel spectrogram (dB)
+    mel_spec    = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=N_MELS)
+    mel_spec_db = librosa.power_to_db(mel_spec)
+
+    # MFCC
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
+
+    # RMS (normalised, then converted to dB — mirrors distance model notebook)
+    rms_raw = librosa.feature.rms(y=y)[0]
+    rms_norm = rms_raw / (np.max(rms_raw) + 1e-9)
+    rms_db  = 20 * np.log10(rms_norm + 1e-6)
+
+    # Spectral centroid & ZCR
+    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+    zcr               = librosa.feature.zero_crossing_rate(y)[0]
+
+    return {
+        "mel_mean":          float(np.mean(mel_spec_db)),
+        "mel_std":           float(np.std(mel_spec_db)),
+        "mfcc_mean":         float(np.mean(mfcc)),
+        "mfcc_std":          float(np.std(mfcc)),
+        "rms_mean":          float(np.mean(rms_db)),
+        "rms_std":           float(np.std(rms_db)),
+        "rms_max":           float(np.max(rms_db)),
+        "rms_min":           float(np.min(rms_db)),
+        "spectral_centroid": float(np.mean(spectral_centroid)),
+        "zcr":               float(np.mean(zcr)),
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Public API  —  run() is called by inference.py
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,38 +233,54 @@ def run(audio_path: str) -> dict:
     """
     Called by inference.py as: audio_engine.run(audio_path)
 
-    Splits audio into overlapping 4s chunks, runs inference on each,
+    Splits audio into overlapping 4s chunks, runs CNN inference on each,
     then averages the softmax scores for a more accurate prediction.
+
+    Returns
+    -------
+    dict with:
+        species          – common name
+        scientific_name  – scientific name
+        type             – Mammal / Bird / Amphibian / Unknown
+        confidence       – CNN softmax confidence (0–1)
+        audio_confidence – same as confidence (alias for fusion_engine)
+        features         – 10-key dict for distance_engine (GBR model)
+        raw_scores       – per-class softmax vector
     """
     _load_model()
 
     if not audio_path or not os.path.exists(audio_path):
         raise ValueError(f"[audio_engine] Audio file not found: {audio_path}")
 
-    # ── Preprocess — split into overlapping chunks ──
+    # ── CNN prediction ────────────────────────────────────────────────────
     chunks  = _audio_to_chunks(audio_path)
     tensors = np.stack([c[..., np.newaxis] for c in chunks])  # (N, 128, 128, 1)
 
-    # ── Inference — average softmax scores across all chunks ──
     all_scores = _model.predict(tensors, verbose=0)   # (N, 35)
-    scores     = np.mean(all_scores, axis=0)           # (35,) averaged
+    scores     = np.mean(all_scores, axis=0)          # (35,) averaged
 
     predicted_idx = int(np.argmax(scores))
     confidence    = float(scores[predicted_idx])
     scientific    = _label_names[predicted_idx]
 
-    # ── Lookup common name + type ──
+    # ── Lookup common name + type ──────────────────────────────────────────
     common_name, animal_type = SPECIES_MAP.get(
         scientific, (scientific, "Unknown")
     )
 
-    # ── Features dict — passed to distance_engine and fusion_engine ──
+    # ── Extract all 10 acoustic features for the GBR distance model ───────
+    acoustic = _extract_acoustic_features(audio_path)
+
+    # ── Build features dict (superset of what inference.py expects) ───────
     features = {
+        # --- CNN-derived (kept for backward compat with fusion_engine) ---
         "confidence":      round(confidence, 4),
         "amplitude":       round(confidence, 4),
         "scientific_name": scientific,
         "raw_scores":      [round(float(s), 4) for s in scores],
         "chunks_used":     len(chunks),
+        # --- Acoustic features for GBR distance model ---
+        **{k: round(v, 6) for k, v in acoustic.items()},
     }
 
     return {

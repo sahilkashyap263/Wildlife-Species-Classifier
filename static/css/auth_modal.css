@@ -1,0 +1,276 @@
+/* ═══════════════════════════════════════════════
+   auth_modal.css  —  WLDS-9 Inline Auth Modal
+   All colours from style.css variables
+   ═══════════════════════════════════════════════ */
+
+/* ── Overlay ───────────────────────────────────── */
+.am-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.am-overlay.am-open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* ── Card ──────────────────────────────────────── */
+.am-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22), var(--glass-shadow);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    overflow: hidden;
+    transform: translateY(18px) scale(0.97);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+    opacity: 0;
+}
+
+.am-overlay.am-open .am-card {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+/* ── Close button ──────────────────────────────── */
+.am-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: none;
+    background: #ff5f57;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    padding: 0;
+    font-size: 0;     
+    line-height: 0;     
+}
+.am-close:hover {
+    background: #e0443c;
+    transform: scale(1.2);
+}
+
+/* ── Tab bar ───────────────────────────────────── */
+.am-tabs {
+    position: relative;
+    display: flex;
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--bg-main);
+    /* no top radius here – card clips it */
+}
+
+.am-tab {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    background: transparent;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    position: relative;
+    z-index: 1;
+    transition: color 0.2s;
+}
+
+.am-tab.am-tab-active {
+    color: var(--turquoise-dk);
+}
+[data-theme="dark"] .am-tab.am-tab-active {
+    color: var(--turquoise-lt);
+}
+
+/* Sliding ink indicator */
+.am-tab-ink {
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--turquoise), var(--teal));
+    border-radius: 2px 2px 0 0;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Panels ────────────────────────────────────── */
+.am-panel {
+    padding: 1.5rem 1.75rem 1.75rem;
+    animation: amFadeIn 0.22s ease;
+}
+
+.am-panel-hidden {
+    display: none;
+}
+
+@keyframes amFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Flash messages ────────────────────────────── */
+.am-flash {
+    margin: 0.75rem 1.75rem 0;
+    padding: 0.55rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.77rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.am-flash-danger  { background: rgba(239,68,68,0.12);  color: #ef4444; border: 1px solid rgba(239,68,68,0.25);  }
+.am-flash-success { background: rgba(34,197,94,0.12);  color: #22c55e; border: 1px solid rgba(34,197,94,0.25);  }
+.am-flash-warning { background: rgba(234,179,8,0.12);  color: #eab308; border: 1px solid rgba(234,179,8,0.25);  }
+
+/* ── Fields ────────────────────────────────────── */
+.am-field {
+    margin-bottom: 0.95rem;
+}
+
+.am-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+}
+
+.am-input-wrap {
+    position: relative;
+}
+
+.am-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.am-input {
+    width: 100%;
+    padding: 0.6rem 2.4rem 0.6rem 2.2rem;
+    background: var(--bg-input);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.am-input:focus {
+    outline: none;
+    border-color: var(--turquoise);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.am-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+/* Eye toggle */
+.am-eye {
+    position: absolute;
+    right: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0.2rem 0.3rem;
+    transition: color 0.2s;
+}
+.am-eye:hover { color: var(--turquoise); }
+
+.am-hint {
+    display: block;
+    font-size: 0.67rem;
+    color: var(--text-secondary);
+    margin-top: 0.22rem;
+    opacity: 0.8;
+}
+
+/* ── Submit button ─────────────────────────────── */
+.am-submit {
+    width: 100%;
+    padding: 0.72rem;
+    margin-top: 0.3rem;
+    background: linear-gradient(135deg, var(--turquoise), #0891b2);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(6, 182, 212, 0.35);
+}
+.am-submit:hover  { opacity: 0.92; box-shadow: 0 6px 22px rgba(6, 182, 212, 0.5); }
+.am-submit:active { transform: scale(0.98); }
+
+/* ── Switch link ───────────────────────────────── */
+.am-switch {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.77rem;
+    color: var(--text-secondary);
+}
+
+.am-switch-btn {
+    background: none;
+    border: none;
+    color: var(--turquoise);
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: none;
+    transition: text-decoration 0.15s;
+}
+.am-switch-btn:hover { text-decoration: underline; }
+
+/* ── Mobile ────────────────────────────────────── */
+@media (max-width: 480px) {
+    .am-card { border-radius: 16px; }
+    .am-panel { padding: 1.25rem 1.25rem 1.5rem; }
+    .am-flash { margin-left: 1.25rem; margin-right: 1.25rem; }
+}

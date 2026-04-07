@@ -1,27 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Wildlife Detection System - Multi-Modal AI Scanner">
-    <title>Multi-Modal Species Identification System</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦅</text></svg>">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <!-- Font Awesome 6 Free -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-          integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Stylesheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
 
-<!-- ═══════════════════════════════════
-     HEADER
-════════════════════════════════════ -->
+{% block title %}Multi-Modal Species Identification System{% endblock %}
+
+{% block body %}
+
 <header class="header">
     <div class="header-content">
         <div class="logo-section">
@@ -30,11 +12,9 @@
             </div>
             <div class="logo-text">
                 <h1>Multi-Modal Species Identification System</h1>
-                <!-- <p>Multi-Modal AI Scanner &middot; WLDS-9</p> -->
             </div>
         </div>
         <div class="header-stats">
-            <!-- Left stats group -->
             <div class="stats-group">
                 <div class="stat-item">
                     <div class="stat-label">Uptime</div>
@@ -45,22 +25,20 @@
                     <div class="stat-value" id="scanCount">0</div>
                 </div>
             </div>
-
-            <!-- Right controls group -->
             <div class="header-controls">
-                <a href="/history" class="nav-history-btn">
+                <a href="{{ url_for('main.history') }}" class="nav-history-btn">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>History</span>
                 </a>
-
                 <div class="header-divider"></div>
-
                 <div class="user-badge">
                     <i class="fa-solid fa-circle-user"></i>
                     <span>{{ username or 'User' }}</span>
-                    {% if is_admin %}<span class="admin-badge"><i class="fa-solid fa-crown"></i> Admin</span>{% endif %}
+                    {% if is_admin %}
+                        <span class="admin-badge"><i class="fa-solid fa-crown"></i> Admin</span>
+                    {% endif %}
                 </div>
-                <a href="/logout" class="logout-btn" title="Log out">
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Log out">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Logout</span>
                 </a>
@@ -77,7 +55,6 @@
 </header>
 
 {% if show_welcome %}
-<!-- Welcome Toast -->
 <div class="welcome-toast" id="welcomeToast">
     <div class="welcome-toast-inner">
         <div class="welcome-toast-icon"><i class="fa-solid fa-circle-check"></i></div>
@@ -85,7 +62,9 @@
             <span class="welcome-toast-title">Welcome back, {{ username }}! 👋</span>
             <span class="welcome-toast-sub">You are now logged in.</span>
         </div>
-        <button class="welcome-toast-close" onclick="dismissToast()"><i class="fa-solid fa-xmark"></i></button>
+        <button class="welcome-toast-close" onclick="dismissToast()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
 </div>
 <script>
@@ -97,9 +76,6 @@
 </script>
 {% endif %}
 
-<!-- ═══════════════════════════════════
-     MAIN CONTAINER
-════════════════════════════════════ -->
 <div class="main-container">
 
     <!-- ──────── LEFT: CONTROLS ──────── -->
@@ -113,7 +89,6 @@
             </div>
             <div class="card-body">
 
-                <!-- MODE SELECTOR -->
                 <div class="control-section">
                     <div class="section-label">Analysis Mode</div>
                     <div class="mode-grid">
@@ -135,7 +110,6 @@
                     </div>
                 </div>
 
-                <!-- SENSORS WRAPPER — becomes 2-col grid in fusion mode -->
                 <div id="sensorsWrapper">
 
                     <!-- AUDIO INPUT -->
@@ -145,7 +119,7 @@
                             Acoustic Sensor
                         </div>
                         <div class="waveform-box">
-                            <canvas id="waveformCanvas" width="340" height="80"
+                            <canvas id="waveformCanvas" width="340" height="72"
                                     aria-label="Audio waveform visualization"></canvas>
                             <div class="waveform-label">
                                 <i class="fa-solid fa-signal"></i>&nbsp;Signal Waveform
@@ -159,12 +133,11 @@
                         </label>
                         <button class="btn btn-record" id="recordBtn">
                             <i class="fa-solid fa-microphone" id="recordIcon"></i>
-                            <span id="recordText">Record 5s Sample</span>
+                            <span id="recordText">Record 15s Sample</span>
                         </button>
                         <div class="progress-wrap" id="recordProgress">
                             <div class="progress-fill" id="recordFill"></div>
                         </div>
-                        <!-- Hidden until audio is loaded/recorded -->
                         <audio id="audioPreview" controls style="display:none"></audio>
                     </div>
 
@@ -211,7 +184,6 @@
 
                 </div><!-- /sensorsWrapper -->
 
-                <!-- ANALYZE BUTTON -->
                 <button class="btn btn-primary analyze-button" id="analyzeBtn">
                     <i class="fa-solid fa-satellite-dish"></i>
                     <span id="analyzeBtnText">Initiate Scan</span>
@@ -223,8 +195,6 @@
 
     <!-- ──────── CENTER: RESULTS ──────── -->
     <div class="results-container">
-
-        <!-- Identification Results Card — two-column layout -->
         <div class="card">
             <div class="card-header">
                 <div class="card-title">
@@ -235,7 +205,6 @@
             </div>
             <div class="card-body">
 
-                <!-- Species banner — full width -->
                 <div class="result-card primary" style="margin-bottom:1rem">
                     <div class="result-label">
                         <i class="fa-solid fa-dna"></i>&nbsp;Species Identified
@@ -244,12 +213,9 @@
                     <div class="result-subtitle" id="speciesType">Awaiting Scan</div>
                 </div>
 
-                <!-- Two-column body -->
                 <div class="results-two-col">
 
-                    <!-- LEFT: Stats -->
                     <div class="results-stats-col">
-
                         <div class="result-card">
                             <div class="result-label">
                                 <i class="fa-solid fa-gauge-high"></i>&nbsp;Confidence
@@ -260,7 +226,6 @@
                             </div>
                         </div>
 
-                        <!-- Distance — audio & fusion only -->
                         <div class="result-card" id="distanceCard">
                             <div class="result-label">
                                 <i class="fa-solid fa-location-arrow"></i>&nbsp;Distance
@@ -268,14 +233,14 @@
                             <div class="result-value" id="distance">— m</div>
                         </div>
 
-                        <!-- Frame Coverage — image only -->
                         <div class="result-card" id="coverageCard" style="display:none">
                             <div class="result-label">
                                 <i class="fa-solid fa-expand"></i>&nbsp;Frame Coverage
                             </div>
                             <div class="result-value" id="bodyCoverage">—</div>
                             <div class="confidence-bar" style="margin-top:0.75rem">
-                                <div class="confidence-fill" id="coverageFill" style="background:linear-gradient(90deg,#8b5cf6,#7c3aed)"></div>
+                                <div class="confidence-fill" id="coverageFill"
+                                     style="background:linear-gradient(90deg,#8b5cf6,#7c3aed)"></div>
                             </div>
                         </div>
 
@@ -292,57 +257,52 @@
                             </div>
                             <div class="result-value" id="threatLevel">SAFE</div>
                         </div>
+                    </div>
 
-                    </div><!-- /results-stats-col -->
-
-                    <!-- RIGHT: Species Info Panel -->
                     <div class="species-info-panel" id="speciesInfoPanel">
                         <div class="species-info-placeholder" id="speciesInfoPlaceholder">
                             <i class="fa-solid fa-binoculars"></i>
                             <span>Species info will appear after scan</span>
                         </div>
                         <div class="species-info-content" id="speciesInfoContent" style="display:none">
-                            <div class="species-info-row" id="infoHabitat">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-tree"></i> Habitat</div>
                                 <div class="species-info-value" id="infoHabitatVal">—</div>
                             </div>
-                            <div class="species-info-row" id="infoDiet">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-utensils"></i> Diet</div>
                                 <div class="species-info-value" id="infoDietVal">—</div>
                             </div>
-                            <div class="species-info-row" id="infoActivity">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-bolt"></i> Activity</div>
                                 <div class="species-info-value" id="infoActivityVal">—</div>
                             </div>
-                            <div class="species-info-row" id="infoSize">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-ruler"></i> Size</div>
                                 <div class="species-info-value" id="infoSizeVal">—</div>
                             </div>
-                            <div class="species-info-row" id="infoStatus">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-leaf"></i> Conservation</div>
                                 <div class="species-info-value" id="infoStatusVal">—</div>
                             </div>
-                            <div class="species-info-row" id="infoRange">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-map-location-dot"></i> Range</div>
                                 <div class="species-info-value" id="infoRangeVal">—</div>
                             </div>
-                            <div class="species-info-row" id="infoBehaviour">
+                            <div class="species-info-row">
                                 <div class="species-info-label"><i class="fa-solid fa-paw"></i> Behaviour</div>
                                 <div class="species-info-value" id="infoBehaviourVal">—</div>
                             </div>
                         </div>
-                    </div><!-- /species-info-panel -->
+                    </div>
 
-                </div><!-- /results-two-col -->
+                </div>
             </div>
         </div>
+    </div>
 
-    </div><!-- /results-container -->
-
-    <!-- ──────── RIGHT: LOGS & CONFIDENCE ──────── -->
+    <!-- ──────── RIGHT: LOGS & MODEL CONFIDENCE ──────── -->
     <div>
-
-        <!-- System Logs -->
         <div class="card">
             <div class="card-header">
                 <div class="card-title">
@@ -367,8 +327,8 @@
             </div>
         </div>
 
-        <!-- Model Confidence Breakdown — moved here, below System Logs -->
-        <div class="card" style="margin-top: 1rem;">
+        <!-- Model Confidence Breakdown -->
+        <div class="card" style="margin-top:1rem">
             <div class="card-header">
                 <div class="card-title">
                     <i class="fa-solid fa-chart-bar card-icon"></i>
@@ -417,28 +377,24 @@
             </div>
         </div>
 
-    </div><!-- /right column -->
+    </div>
+</div>
 
-</div><!-- /main-container -->
-
-<!-- ═══════════════════════════════════
-     FOOTER
-════════════════════════════════════ -->
 <footer class="footer">
     <div class="footer-brand">
         <div class="footer-dot"></div>
-        WLDS-9 &nbsp;·&nbsp; IoT Acoustic & Visual Scanner
+        WLDS-9 &nbsp;·&nbsp; IoT Acoustic &amp; Visual Scanner
     </div>
     <div class="footer-links">
-        <a href="/">Home</a>
-        <a href="/history">History</a>
+        <a href="{{ url_for('main.index') }}">Home</a>
+        <a href="{{ url_for('main.history') }}">History</a>
         <a href="#">v2.4.1</a>
     </div>
     <div class="footer-copy">© 2026 Multi-Modal Species Identification System</div>
 </footer>
 
-{% block scripts %}{% endblock %}
-<!-- JavaScript -->
+{% endblock %}
+
+{% block scripts %}
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-</body>
-</html>
+{% endblock %}

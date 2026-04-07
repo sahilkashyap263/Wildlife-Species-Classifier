@@ -21,7 +21,8 @@ def _get_conn() -> sqlite3.Connection:
             mode            TEXT    NOT NULL,
             species         TEXT,
             confidence      REAL,
-            distance        REAL,
+            distance        TEXT,
+            distance_label  TEXT,
             type            TEXT,
             agreement       INTEGER,
             audio_path      TEXT,
@@ -33,6 +34,26 @@ def _get_conn() -> sqlite3.Connection:
             logged_by       TEXT
         )
     """)
+
+    # ── Schema migrations: safely add columns that may be missing ─────────────
+    existing_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(detection_logs)")
+    }
+    migrations = {
+        "audio_path":    "ALTER TABLE detection_logs ADD COLUMN audio_path    TEXT",
+        "image_path":    "ALTER TABLE detection_logs ADD COLUMN image_path    TEXT",
+        "agreement":     "ALTER TABLE detection_logs ADD COLUMN agreement     INTEGER",
+        "user_id":       "ALTER TABLE detection_logs ADD COLUMN user_id       INTEGER",
+        "logged_by":     "ALTER TABLE detection_logs ADD COLUMN logged_by     TEXT",
+        "error_msg":     "ALTER TABLE detection_logs ADD COLUMN error_msg     TEXT",
+        # distance was REAL before — now TEXT to hold range strings like "31–60 meters"
+        "distance_label":"ALTER TABLE detection_logs ADD COLUMN distance_label TEXT",
+    }
+    for col, ddl in migrations.items():
+        if col not in existing_cols:
+            conn.execute(ddl)
+            print(f"[WLDS-9 DB] Migration applied: added column '{col}'")
+
     conn.commit()
     return conn
 
@@ -42,19 +63,26 @@ def log_run(mode: str, inputs: dict, result: dict,
     """Persist an inference run to SQLite."""
     timestamp = datetime.utcnow().isoformat()
 
+    # confidence comes from the audio/image/fusion engine — always a float 0-1
+    # distance is now a range string e.g. "31–60 meters" (never a raw float)
+    confidence     = result.get("confidence")           # float | None
+    distance       = result.get("distance")             # str  | None  e.g. "31–60 meters"
+    distance_label = result.get("distance_label")       # str  | None  e.g. "Medium"
+
     conn = _get_conn()
     conn.execute("""
         INSERT INTO detection_logs
-            (timestamp, mode, species, confidence, distance, type,
-             agreement, audio_path, image_path, full_result, is_error,
+            (timestamp, mode, species, confidence, distance, distance_label,
+             type, agreement, audio_path, image_path, full_result, is_error,
              user_id, logged_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
     """, (
         timestamp,
         mode,
         result.get("species"),
-        result.get("confidence"),
-        result.get("distance"),
+        confidence,
+        distance,
+        distance_label,
         result.get("type"),
         1 if result.get("agreement") is True else (0 if result.get("agreement") is False else None),
         inputs.get("audio_path"),
@@ -103,8 +131,6 @@ def fetch_logs(limit: int = 50, mode: str = None,
     query = "SELECT * FROM detection_logs WHERE 1=1"
     params = []
 
-    # Role-based filtering
-    # Include rows with NULL user_id (old data before auth was added) for backward compat
     if not is_admin and user_id is not None:
         query += " AND (user_id = ? OR user_id IS NULL)"
         params.append(user_id)
@@ -131,12 +157,12 @@ def fetch_stats(user_id: int = None, is_admin: bool = False) -> dict:
     conn = _get_conn()
 
     where = ""
-    params_stats = []
+    params_stats   = []
     params_species = []
 
     if not is_admin and user_id is not None:
-        where = "WHERE user_id = ?"
-        params_stats = [user_id]
+        where          = "WHERE user_id = ?"
+        params_stats   = [user_id]
         params_species = [user_id]
 
     stats = conn.execute(f"""
@@ -145,12 +171,17 @@ def fetch_stats(user_id: int = None, is_admin: bool = False) -> dict:
             COUNT(CASE WHEN is_error=0 THEN 1 END) AS successful_scans,
             COUNT(CASE WHEN is_error=1 THEN 1 END) AS error_count,
             AVG(CASE WHEN is_error=0 THEN confidence END) AS avg_confidence,
-            AVG(CASE WHEN is_error=0 THEN distance END)   AS avg_distance,
             MAX(timestamp)                         AS last_scan
         FROM detection_logs {where}
     """, params_stats).fetchone()
+    # NOTE: avg_distance removed from stats — distance is now a text range,
+    # not a number. Add a numeric proxy column later if analytics need it.
 
-    species_where = (where + " AND is_error=0 AND species IS NOT NULL") if where else "WHERE is_error=0 AND species IS NOT NULL"
+    species_where = (
+        where + " AND is_error=0 AND species IS NOT NULL"
+        if where else
+        "WHERE is_error=0 AND species IS NOT NULL"
+    )
     top_species = conn.execute(f"""
         SELECT species, COUNT(*) as count
         FROM detection_logs {species_where}
