@@ -4,8 +4,10 @@ wlds9.db
 
 uploads/
 
-Testing Sounds Dataset
+Testing Dataset
 
 __pycache__/
 
 core/__pycache__/
+
+db.txt

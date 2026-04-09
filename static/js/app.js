@@ -58,6 +58,9 @@ const dom = (() => {
         themeToggle:     $('themeToggle'),
         themeIcon:       $('themeIcon'),
         copyJson:        null,   // removed from UI
+        // Wiki link elements — cached once at startup
+        wikiRow:         $('wikiRow'),
+        wikiLink:        $('wikiLink'),
     };
 })();
 
@@ -153,6 +156,8 @@ const ModeManager = {
         ResultsHandler.setImageMode(isImage);
         document.getElementById('speciesInfoPlaceholder').style.display = 'flex';
         document.getElementById('speciesInfoContent').style.display     = 'none';
+        // Hide wiki link when mode changes and results are cleared
+        ResultsHandler._hideWikiLink();
     },
 };
 
@@ -339,6 +344,8 @@ const Analyzer = {
     },
 };
 
+// ── Species database (lookup table) ──────────────────────────────────────────
+// Stored as a const outside ResultsHandler so it is only allocated once.
 const SPECIES_DB = {
     "American Pipit":           { habitat:"Open fields, tundra, beaches", diet:"Insectivore — insects and seeds", activity:"Diurnal", size:"Small (15–17 cm)", status:"LC", status_label:"Least Concern", range:"North America, Central America", behaviour:"Bobs tail constantly while walking. Migrates in large flocks." },
     "Frog":                     { habitat:"Wetlands, ponds, rainforests", diet:"Insectivore — insects, worms, small invertebrates", activity:"Nocturnal/Crepuscular", size:"Small (2–30 cm)", status:"LC", status_label:"Least Concern", range:"Worldwide except Antarctica", behaviour:"Amphibious. Males call loudly to attract females near water." },
@@ -377,21 +384,48 @@ const SPECIES_DB = {
     "Bear":                     { habitat:"Forests, mountains, tundra, coastal areas", diet:"Omnivore — berries, fish, insects, small mammals", activity:"Diurnal/Crepuscular", size:"Large (120–280 cm body)", status:"LC", status_label:"Least Concern", range:"North America, Europe, Asia", behaviour:"Solitary. Hibernates in winter. Excellent swimmer and climber." },
 };
 
+// Case-insensitive lookup with cached lowercase keys for performance
+const _SPECIES_DB_LOWER = Object.fromEntries(
+    Object.entries(SPECIES_DB).map(([k, v]) => [k.toLowerCase(), v])
+);
+
 function getSpeciesInfo(species) {
     if (!species) return null;
-    return SPECIES_DB[species]
-        || SPECIES_DB[Object.keys(SPECIES_DB).find(k => k.toLowerCase() === species.toLowerCase())]
-        || null;
+    return SPECIES_DB[species] || _SPECIES_DB_LOWER[species.toLowerCase()] || null;
 }
 
+// Pre-cache conservation status CSS class map (allocated once, not per-call)
+const _STATUS_CLS = { LC:'status-lc', NT:'status-nt', VU:'status-vu', EN:'status-en', CR:'status-cr' };
+
 const ResultsHandler = {
+    // Cache frequently-used DOM nodes that are only needed during display
+    _els: null,
+    _getEls() {
+        if (!this._els) {
+            const $ = id => document.getElementById(id);
+            this._els = {
+                placeholder:   $('speciesInfoPlaceholder'),
+                content:       $('speciesInfoContent'),
+                habitat:       $('infoHabitatVal'),
+                diet:          $('infoDietVal'),
+                activity:      $('infoActivityVal'),
+                size:          $('infoSizeVal'),
+                status:        $('infoStatusVal'),
+                range:         $('infoRangeVal'),
+                behaviour:     $('infoBehaviourVal'),
+                bodyCoverage:  $('bodyCoverage'),
+                coverageFill:  $('coverageFill'),
+            };
+        }
+        return this._els;
+    },
+
     display(data) {
         const {
             species = 'UNKNOWN', type = '—', confidence = 0,
             distance = null, audio_confidence, image_confidence,
             agreement, body_coverage,
         } = data;
-        // NOTE: distance_confidence removed — no longer returned by distance_engine
 
         dom.species.textContent     = species.toUpperCase();
         dom.speciesType.textContent = `Class: ${type}`;
@@ -405,13 +439,11 @@ const ResultsHandler = {
         this.setImageMode(isImage);
 
         if (isImage) {
-            const cov       = body_coverage || 0;
-            const bodyCovEl = document.getElementById('bodyCoverage');
-            const covFillEl = document.getElementById('coverageFill');
-            if (bodyCovEl) bodyCovEl.textContent = `${cov.toFixed(1)}%`;
-            if (covFillEl) covFillEl.style.width = `${cov}%`;
+            const cov = body_coverage || 0;
+            const els = this._getEls();
+            if (els.bodyCoverage) els.bodyCoverage.textContent = `${cov.toFixed(1)}%`;
+            if (els.coverageFill) els.coverageFill.style.width = `${cov}%`;
         } else {
-            // distance is now a range string e.g. "31–60 meters" — display directly
             dom.distance.textContent = distance || '—';
         }
 
@@ -424,7 +456,6 @@ const ResultsHandler = {
             );
         }
 
-        // distance is a string range — use directly, no toFixed()
         const distStr = isImage
             ? `Frame: ${body_coverage ? body_coverage.toFixed(1) + '%' : 'N/A'}`
             : `Distance: ${distance || 'N/A'}`;
@@ -437,30 +468,55 @@ const ResultsHandler = {
     },
 
     _updateSpeciesInfo(species, data) {
-        const placeholder = document.getElementById('speciesInfoPlaceholder');
-        const content     = document.getElementById('speciesInfoContent');
-        if (!placeholder || !content) return;
+        const els = this._getEls();
+        if (!els.placeholder || !els.content) return;
+
         const info = getSpeciesInfo(species);
-        if (!info) { placeholder.style.display = 'flex'; content.style.display = 'none'; return; }
-        placeholder.style.display = 'none';
-        content.style.display     = 'flex';
+        if (!info) {
+            els.placeholder.style.display = 'flex';
+            els.content.style.display     = 'none';
+            this._hideWikiLink();
+            return;
+        }
+
+        els.placeholder.style.display = 'none';
+        els.content.style.display     = 'flex';
+
         const isImage     = appState.mode === 'image';
         const habitatVal  = (isImage && data.habitat_zone)   ? data.habitat_zone   : info.habitat;
         const activityVal = (isImage && data.activity_level) ? data.activity_level : info.activity;
         const sizeVal     = (isImage && data.size_class)     ? `${data.size_class} — ${info.size}` : info.size;
-        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-        set('infoHabitatVal',   habitatVal);
-        set('infoDietVal',      info.diet);
-        set('infoActivityVal',  activityVal);
-        set('infoSizeVal',      sizeVal);
-        set('infoRangeVal',     info.range);
-        set('infoBehaviourVal', info.behaviour);
-        const statusEl = document.getElementById('infoStatusVal');
-        if (statusEl) {
-            const cls = { LC:'status-lc', NT:'status-nt', VU:'status-vu', EN:'status-en', CR:'status-cr' };
-            statusEl.className   = `species-info-value ${cls[info.status] || ''}`;
-            statusEl.textContent = `${info.status_label} (${info.status})`;
+
+        // Batch DOM writes — avoids repeated style recalculations
+        els.habitat.textContent   = habitatVal;
+        els.diet.textContent      = info.diet;
+        els.activity.textContent  = activityVal;
+        els.size.textContent      = sizeVal;
+        els.range.textContent     = info.range;
+        els.behaviour.textContent = info.behaviour;
+
+        if (els.status) {
+            els.status.className   = `species-info-value ${_STATUS_CLS[info.status] || ''}`;
+            els.status.textContent = `${info.status_label} (${info.status})`;
         }
+
+        // ── Wikipedia link ────────────────────────────────────────────────
+        // wiki_url is built server-side from the scientific name and returned
+        // with every API response. We just wire it up here — no client-side
+        // URL construction needed, keeping the JS simple and the URL correct.
+        const wikiUrl = (data.wiki_url || '').trim();
+        if (wikiUrl && dom.wikiLink && dom.wikiRow) {
+            dom.wikiLink.href        = wikiUrl;
+            dom.wikiRow.style.display = 'flex';
+        } else {
+            this._hideWikiLink();
+        }
+    },
+
+    // Hides the wiki row cleanly — called on mode switch and when no info is found
+    _hideWikiLink() {
+        if (dom.wikiRow)  dom.wikiRow.style.display  = 'none';
+        if (dom.wikiLink) dom.wikiLink.href           = '#';
     },
 
     setImageMode(isImage) {
@@ -471,7 +527,6 @@ const ResultsHandler = {
     },
 
     _updateModelBars(c, ac, ic) {
-        // distance_confidence removed from signature — use species confidence as proxy
         const set = (model, pct) => {
             const p = Math.min(100, (pct || 0) * 100);
             dom[`${model}Fill`].style.width = `${p}%`;
@@ -489,6 +544,7 @@ const ResultsHandler = {
 };
 
 const Logger = {
+    // Use a DocumentFragment to batch log entry inserts — avoids layout thrash
     add(message, type = 'info') {
         const time  = new Date().toTimeString().slice(0, 8);
         const entry = document.createElement('div');
