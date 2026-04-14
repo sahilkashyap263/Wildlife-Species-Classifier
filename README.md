@@ -224,7 +224,7 @@ DELETE FROM sqlite_sequence WHERE name='detection_logs';
 | Mohammad Mujamil | [@mujamilh](https://github.com/mujamilh) |
 | Ashutosh Sharma | [@AshutoshSharma-091](https://github.com/AshutoshSharma-091) |
 | Amaan Alam | [@amaan541](https://github.com/amaan541) |
-| — | [GitHub]() |
+| Abhishek | [@abhi1917kr](https://github.com/abhi1917kr) |
 
 ---
 
